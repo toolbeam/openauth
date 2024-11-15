@@ -11,14 +11,13 @@ function createResponse(
   body?: any,
   headers: Record<string, string> = {},
   cookies: string[] = []
-): APIGatewayProxyResult {
+): APIGatewayProxyResultV2 {
+  console.log("cookies", cookies, cookies.join("; "));
   return {
     statusCode: status,
     body: body ? JSON.stringify(body) : "",
-    headers: {
-      ...headers,
-      "Set-Cookie": cookies.join("; "),
-    },
+    cookies: cookies,
+    headers: headers,
     isBase64Encoded: false,
   };
 }
