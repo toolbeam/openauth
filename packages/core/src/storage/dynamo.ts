@@ -1,6 +1,7 @@
 import { joinKey, StorageAdapter } from "./storage.js";
 import { AwsClient } from "aws4fetch";
 import type {
+  AttributeValue,
   GetItemOutput,
   ScanCommandOutput,
 } from "@aws-sdk/client-dynamodb";
@@ -56,8 +57,9 @@ export function DynamoStorage(options: DynamoStorageOptions): StorageAdapter {
     };
   }
 
-  const DYNAMODB_BASE_URL = `https://dynamodb.${options.region ?? "us-east-1"}.amazonaws.com`;
-  const baseUrl = new URL(DYNAMODB_BASE_URL);
+  const baseUrl = new URL(
+    `https://dynamodb.${options.region ?? "us-east-1"}.amazonaws.com`
+  );
 
   return {
     async get(key: string[]) {
@@ -142,11 +144,11 @@ export function DynamoStorage(options: DynamoStorageOptions): StorageAdapter {
     },
 
     async *scan(prefix: string[]) {
-      let cursor: string | undefined;
+      let lastEvaluatedKey: Record<string, AttributeValue> | undefined;
       const { pk } = parseKey(prefix);
 
       do {
-        const response = await client
+        const response = (await client
           .fetch(baseUrl.toString(), {
             method: "POST",
             headers: {
@@ -155,7 +157,7 @@ export function DynamoStorage(options: DynamoStorageOptions): StorageAdapter {
             },
             body: JSON.stringify({
               TableName: options.table,
-              ExclusiveStartKey: cursor ? JSON.parse(atob(cursor)) : undefined,
+              ExclusiveStartKey: lastEvaluatedKey,
               KeyConditionExpression: "#pk = :pk",
               ExpressionAttributeNames: {
                 "#pk": options.pk ?? "pk",
@@ -165,16 +167,15 @@ export function DynamoStorage(options: DynamoStorageOptions): StorageAdapter {
               },
             }),
           })
-          .then((res) => res.json() as unknown as ScanCommandOutput);
+          .then((res) => res.json())) as unknown as ScanCommandOutput;
 
-        const Items = response?.Items;
-        const LastEvaluatedKey = response?.LastEvaluatedKey;
+        const items = response?.Items;
 
-        if (!Items || Items.length === 0) {
+        if (!items || items.length === 0) {
           break;
         }
 
-        for (const item of Items) {
+        for (const item of items) {
           if (!item) {
             continue;
           }
@@ -191,10 +192,8 @@ export function DynamoStorage(options: DynamoStorageOptions): StorageAdapter {
           }
         }
 
-        cursor = LastEvaluatedKey
-          ? btoa(JSON.stringify(LastEvaluatedKey))
-          : undefined;
-      } while (cursor);
+        lastEvaluatedKey = response?.LastEvaluatedKey;
+      } while (lastEvaluatedKey);
     },
   };
 }
