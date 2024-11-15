@@ -24,7 +24,7 @@ export const handler = aws(
     providers: {
       code: CodeAdapter({
         length: 6,
-        onStart: async (req) => {
+        start: async (req) => {
           return new Response(
             CodeStart({
               mode: "email",
@@ -33,16 +33,16 @@ export const handler = aws(
               headers: {
                 "Content-Type": "text/html",
               },
-            },
+            }
           );
         },
-        onCodeRequest: async (code, claims, req) =>
+        send: async (code, claims, req) =>
           new Response(CodeEnter({ mode: "email", debugCode: code, claims }), {
             headers: {
               "Content-Type": "text/html",
             },
           }),
-        onCodeInvalid: async (_, claims) => {
+        invalid: async (_, claims) => {
           return new Response(
             CodeEnter({
               mode: "email",
@@ -53,21 +53,17 @@ export const handler = aws(
               headers: {
                 "Content-Type": "text/html",
               },
-            },
+            }
           );
         },
       }),
     },
-    callbacks: {
-      auth: {
-        allowClient: async () => true,
-        success: async (ctx, value) => {
-          console.log("value", value);
-          return ctx.session("user", {
-            email: value.claims.email,
-          });
-        },
-      },
+    success: async (ctx, value) => {
+      console.log("value", value);
+      return ctx.session("user", {
+        email: value.claims.email,
+      });
     },
-  }),
+    allow: async () => true,
+  })
 );
