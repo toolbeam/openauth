@@ -134,7 +134,6 @@ export function PasswordAdapter(config: PasswordConfig) {
       routes.post("/authorize", async (c) => {
         const fd = await c.req.formData();
         const email = fd.get("email")?.toString()?.toLowerCase();
-        const action = fd.get("action")?.toString();
         const adapter = await ctx.get<PasswordLoginState>(c, "adapter");
 
         async function transition(
@@ -162,7 +161,7 @@ export function PasswordAdapter(config: PasswordConfig) {
           );
         }
 
-        if (adapter.type === "start" && action === "authorize") {
+        if (adapter.type === "start") {
           if (!email) return transition(adapter, { type: "invalid_email" });
           const hash = await Storage.get<HashedPassword>(ctx.storage, [
             "email",
@@ -185,7 +184,7 @@ export function PasswordAdapter(config: PasswordConfig) {
           }
         }
 
-        if (adapter.type === "otp" && action === "verify") {
+        if (adapter.type === "otp") {
           const otp = fd.get("otp")?.toString();
           if (!otp || otp !== adapter.otp) {
             return transition(adapter, { type: "invalid_otp" });

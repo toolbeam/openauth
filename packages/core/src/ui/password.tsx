@@ -66,7 +66,6 @@ export function PasswordUI(input: PasswordUIOptions) {
             <FormAlert message={error?.type && copy?.[`error_${error.type}`]} />
             {state.type === "start" && (
               <>
-                <input type="hidden" name="action" value="authorize" />
                 <input
                   data-component="input"
                   type="email"
@@ -100,7 +99,6 @@ export function PasswordUI(input: PasswordUIOptions) {
             )}
             {state.type === "otp" && (
               <>
-                <input type="hidden" name="action" value="verify" />
                 <input
                   data-component="input"
                   autofocus
