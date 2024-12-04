@@ -16,6 +16,7 @@ const DEFAULT_COPY = {
   error_invalid_code: "Code is incorrect.",
   error_invalid_email: "Email is not valid.",
   error_invalid_password: "Password is incorrect.",
+  error_invalid_otp: "One-time password is incorrect.",
   error_password_mismatch: "Passwords do not match.",
   register_title: "Welcome to the app",
   register_description: "Sign in with your email",
@@ -25,6 +26,8 @@ const DEFAULT_COPY = {
   register_prompt: "Don't have an account?",
   login_prompt: "Already have an account?",
   login: "Login",
+  login_code_prompt:
+    "Enter the one-time password generated from your authentication device.",
   change_prompt: "Forgot password?",
   code_resend: "Resend code",
   code_return: "Back to",
@@ -32,6 +35,7 @@ const DEFAULT_COPY = {
   input_email: "Email",
   input_password: "Password",
   input_code: "Code",
+  input_otp: "One-time password",
   input_repeat: "Repeat password",
 } satisfies {
   [key in `error_${
@@ -55,40 +59,60 @@ export function PasswordUI(input: PasswordUIOptions) {
   };
   return {
     sendCode: input.sendCode,
-    login: async (_req, form, error) => {
+    login: async (_req, state, form, error) => {
       const jsx = (
         <Layout theme={input.theme}>
-          <form data-component="form" method="post">
+          <form data-component="form" method="post" replace>
             <FormAlert message={error?.type && copy?.[`error_${error.type}`]} />
-            <input
-              data-component="input"
-              type="email"
-              name="email"
-              required
-              placeholder={copy.input_email}
-              autofocus={!error}
-              value={form?.get("email")?.toString()}
-            />
-            <input
-              data-component="input"
-              autofocus={error?.type === "invalid_password"}
-              required
-              type="password"
-              name="password"
-              placeholder="Password"
-            />
-            <button data-component="button">Continue</button>
-            <div data-component="form-footer">
-              <span>
-                {copy.register_prompt}{" "}
-                <a data-component="link" href="register">
-                  {copy.register}
-                </a>
-              </span>
-              <a data-component="link" href="change">
-                {copy.change_prompt}
-              </a>
-            </div>
+            {state.type === "start" && (
+              <>
+                <input type="hidden" name="action" value="authorize" />
+                <input
+                  data-component="input"
+                  type="email"
+                  name="email"
+                  required
+                  placeholder={copy.input_email}
+                  autofocus={!error}
+                  value={form?.get("email")?.toString()}
+                />
+                <input
+                  data-component="input"
+                  autofocus={error?.type === "invalid_password"}
+                  required
+                  type="password"
+                  name="password"
+                  placeholder="Password"
+                />
+                <button data-component="button">Continue</button>
+                <div data-component="form-footer">
+                  <span>
+                    {copy.register_prompt}{" "}
+                    <a data-component="link" href="register">
+                      {copy.register}
+                    </a>
+                  </span>
+                  <a data-component="link" href="change">
+                    {copy.change_prompt}
+                  </a>
+                </div>
+              </>
+            )}
+            {state.type === "otp" && (
+              <>
+                <input type="hidden" name="action" value="verify" />
+                <input
+                  data-component="input"
+                  autofocus
+                  name="otp"
+                  minLength={6}
+                  maxLength={6}
+                  required
+                  placeholder={copy.input_otp}
+                />
+                <button data-component="button">Continue</button>
+              </>
+            )}
           </form>
         </Layout>
       );
@@ -101,10 +125,10 @@ export function PasswordUI(input: PasswordUIOptions) {
     },
     register: async (_req, state, form, error) => {
       const emailError = ["invalid_email", "email_taken"].includes(
-        error?.type || "",
+        error?.type || ""
       );
       const passwordError = ["invalid_password", "password_mismatch"].includes(
-        error?.type || "",
+        error?.type || ""
       );
       const jsx = (
         <Layout theme={input.theme}>
@@ -179,7 +203,7 @@ export function PasswordUI(input: PasswordUIOptions) {
     },
     change: async (_req, state, form, error) => {
       const passwordError = ["invalid_password", "password_mismatch"].includes(
-        error?.type || "",
+        error?.type || ""
       );
       const jsx = (
         <Layout theme={input.theme}>

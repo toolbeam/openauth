@@ -12,22 +12,24 @@ export interface PasswordConfig {
   hasher?: PasswordHasher<any>;
   login: (
     req: Request,
+    state: PasswordLoginState,
     form?: FormData,
-    error?: PasswordLoginError,
+    error?: PasswordLoginError
   ) => Promise<Response>;
   register: (
     req: Request,
     state: PasswordRegisterState,
     form?: FormData,
-    error?: PasswordRegisterError,
+    error?: PasswordRegisterError
   ) => Promise<Response>;
   change: (
     req: Request,
     state: PasswordChangeState,
     form?: FormData,
-    error?: PasswordChangeError,
+    error?: PasswordChangeError
   ) => Promise<Response>;
   sendCode: (email: string, code: string) => Promise<void>;
+  generateOtp?: (req: Request, email: string) => Promise<string | null>;
 }
 
 export type PasswordRegisterState =
@@ -89,12 +91,25 @@ export type PasswordChangeError =
       type: "password_mismatch";
     };
 
+export type PasswordLoginState =
+  | {
+      type: "start";
+    }
+  | {
+      type: "otp";
+      email: string;
+      otp: string;
+    };
+
 export type PasswordLoginError =
   | {
       type: "invalid_password";
     }
   | {
       type: "invalid_email";
+    }
+  | {
+      type: "invalid_otp";
     };
 
 export function PasswordAdapter(config: PasswordConfig) {
@@ -109,40 +124,76 @@ export function PasswordAdapter(config: PasswordConfig) {
   return {
     type: "password",
     init(routes, ctx) {
-      routes.get("/authorize", async (c) =>
-        ctx.forward(c, await config.login(c.req.raw)),
-      );
+      routes.get("/authorize", async (c) => {
+        const state: PasswordLoginState = {
+          type: "start",
+        };
+        ctx.forward(c, await config.login(c.req.raw, state));
+      });
 
       routes.post("/authorize", async (c) => {
         const fd = await c.req.formData();
-        async function error(err: PasswordLoginError) {
-          return ctx.forward(c, await config.login(c.req.raw, fd, err));
-        }
         const email = fd.get("email")?.toString()?.toLowerCase();
-        if (!email) return error({ type: "invalid_email" });
-        const hash = await Storage.get<HashedPassword>(ctx.storage, [
-          "email",
-          email,
-          "password",
-        ]);
-        const password = fd.get("password")?.toString();
-        if (!password || !hash || !(await hasher.verify(password, hash)))
-          return error({ type: "invalid_password" });
-        return ctx.success(
-          c,
-          {
-            email: email,
-          },
-          {
-            invalidate: async (subject) => {
-              await Storage.set(
-                ctx.storage,
-                ["email", email, "subject"],
-                subject,
-              );
-            },
-          },
-        );
+        const action = fd.get("action")?.toString();
+        const adapter = await ctx.get<PasswordLoginState>(c, "adapter");
+
+        async function transition(
+          next: PasswordLoginState,
+          err?: PasswordLoginError
+        ) {
+          // Only 10 minutes for login state (OTP)
+          await ctx.set<PasswordLoginState>(c, "adapter", 60 * 10, next);
+          return ctx.forward(c, await config.login(c.req.raw, next, fd, err));
+        }
+
+        async function success(email: string) {
+          return ctx.success(
+            c,
+            { email },
+            {
+              invalidate: async (subject) => {
+                await Storage.set(
+                  ctx.storage,
+                  ["email", email, "subject"],
+                  subject
+                );
+              },
+            }
+          );
+        }
+
+        if (adapter.type === "start" && action === "authorize") {
+          if (!email) return transition(adapter, { type: "invalid_email" });
+          const hash = await Storage.get<HashedPassword>(ctx.storage, [
+            "email",
+            email,
+            "password",
+          ]);
+          const password = fd.get("password")?.toString();
+          if (!password || !hash || !(await hasher.verify(password, hash)))
+            return transition(adapter, { type: "invalid_password" });
+
+          const otp = await config.generateOtp?.(c.req.raw, email);
+          if (otp) {
+            return transition({
+              type: "otp",
+              otp,
+              email,
+            });
+          } else {
+            return success(email);
+          }
+        }
+
+        if (adapter.type === "otp" && action === "verify") {
+          const otp = fd.get("otp")?.toString();
+          if (!otp || otp !== adapter.otp) {
+            return transition(adapter, { type: "invalid_otp" });
+          }
+          return success(adapter.email);
+        }
+
+        return transition({ type: "start" });
       });
 
       routes.get("/register", async (c) => {
@@ -161,17 +212,17 @@ export function PasswordAdapter(config: PasswordConfig) {
 
         async function transition(
           next: PasswordRegisterState,
-          err?: PasswordRegisterError,
+          err?: PasswordRegisterError
         ) {
           await ctx.set<PasswordRegisterState>(
             c,
             "adapter",
             60 * 60 * 24,
-            next,
+            next
           );
           return ctx.forward(
             c,
-            await config.register(c.req.raw, next, fd, err),
+            await config.register(c.req.raw, next, fd, err)
           );
         }
 
@@ -213,7 +264,7 @@ export function PasswordAdapter(config: PasswordConfig) {
           await Storage.set(
             ctx.storage,
             ["email", adapter.email, "password"],
-            adapter.password,
+            adapter.password
           );
           return ctx.success(c, {
             email: adapter.email,
@@ -243,7 +294,7 @@ export function PasswordAdapter(config: PasswordConfig) {
 
         async function transition(
           next: PasswordChangeState,
-          err?: PasswordChangeError,
+          err?: PasswordChangeError
         ) {
           await ctx.set<PasswordChangeState>(c, "adapter", 60 * 60 * 24, next);
           return ctx.forward(c, await config.change(c.req.raw, next, fd, err));
@@ -254,7 +305,7 @@ export function PasswordAdapter(config: PasswordConfig) {
           if (!email)
             return transition(
               { type: "start", redirect: adapter.redirect },
-              { type: "invalid_email" },
+              { type: "invalid_email" }
             );
           const code = generate();
           await config.sendCode(email, code);
@@ -296,7 +347,7 @@ export function PasswordAdapter(config: PasswordConfig) {
           await Storage.set(
             ctx.storage,
             ["email", adapter.email, "password"],
-            await hasher.hash(password),
+            await hasher.hash(password)
           );
           const subject = await Storage.get<string>(ctx.storage, [
             "email",
@@ -336,7 +387,7 @@ export function PBKDF2Hasher(opts?: { interations?: number }): PasswordHasher<{
         bytes,
         "PBKDF2",
         false,
-        ["deriveBits"],
+        ["deriveBits"]
       );
       const hash = await crypto.subtle.deriveBits(
         {
@@ -346,7 +397,7 @@ export function PBKDF2Hasher(opts?: { interations?: number }): PasswordHasher<{
           iterations,
         },
         keyMaterial,
-        256,
+        256
       );
       const hashBase64 = jose.base64url.encode(new Uint8Array(hash));
       const saltBase64 = jose.base64url.encode(salt);
@@ -371,7 +422,7 @@ export function PBKDF2Hasher(opts?: { interations?: number }): PasswordHasher<{
         passwordBytes,
         "PBKDF2",
         false,
-        ["deriveBits"],
+        ["deriveBits"]
       );
       const hash = await crypto.subtle.deriveBits(params, keyMaterial, 256);
       const hashBase64 = jose.base64url.encode(new Uint8Array(hash));
@@ -380,6 +431,7 @@ export function PBKDF2Hasher(opts?: { interations?: number }): PasswordHasher<{
   };
 }
 import crypto, { timingSafeEqual } from "crypto";
+import { Password } from "bun";
 
 export function ScryptHasher(opts?: {
   N?: number;
@@ -410,7 +462,7 @@ export function ScryptHasher(opts?: {
           (err, derivedKey) => {
             if (err) reject(err);
             else resolve(derivedKey);
-          },
+          }
         );
       });
 
@@ -439,7 +491,7 @@ export function ScryptHasher(opts?: {
           (err, derivedKey) => {
             if (err) reject(err);
             else resolve(derivedKey);
-          },
+          }
         );
       });
 
