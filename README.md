@@ -180,7 +180,7 @@ const app = authorizer({
   providers: { ... },
   subjects,
   async success(ctx, value) { ... },
-  storage: new MemoryStore(),
+  storage: MemoryStorage(),
 })
 ```
 
