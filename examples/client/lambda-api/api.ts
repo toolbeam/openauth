@@ -1,20 +1,17 @@
 import { Context, Hono } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
-import { subjects } from "../subjects.js";
 import { createClient } from "@openauthjs/core";
 import { handle } from "hono/aws-lambda";
+import { subjects } from "../../subjects";
 
 const client = createClient({
-  clientID: "123",
+  clientID: "lambda-api",
 });
 
 const app = new Hono()
   .get("/authorize", async (c) => {
     const origin = new URL(c.req.url).origin;
-    return c.redirect(
-      client.authorize("password", origin + "/callback", "code"),
-      302,
-    );
+    return c.redirect(client.authorize(origin + "/callback", "code"), 302);
   })
   .get("/callback", async (c) => {
     const origin = new URL(c.req.url).origin;
@@ -29,7 +26,6 @@ const app = new Hono()
     }
   })
   .get("/", async (c) => {
-    console.log(process.env.OPENAUTH_ISSUER);
     const access = getCookie(c, "access_token");
     const refresh = getCookie(c, "refresh_token");
     try {

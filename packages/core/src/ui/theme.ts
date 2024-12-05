@@ -112,3 +112,15 @@ export const THEME_VERCEL: Theme = {
     @import url('https://fonts.googleapis.com/css2?family=Geist:wght@100;200;300;400;500;600;700;800;900&display=swap');
   `,
 };
+
+// i really don't wanna use async local storage for this so get over it
+
+let theme: Theme = THEME_SST;
+
+export function setTheme(value: Theme) {
+  theme = value;
+}
+
+export function getTheme() {
+  return theme;
+}

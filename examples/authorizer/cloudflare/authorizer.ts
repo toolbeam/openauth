@@ -4,7 +4,7 @@ import {
   type ExecutionContext,
   type KVNamespace,
 } from "@cloudflare/workers-types";
-import { subjects } from "../subjects.js";
+import { subjects } from "../../subjects.js";
 import { PasswordAdapter } from "@openauthjs/core/adapter/password";
 import { PasswordUI } from "@openauthjs/core/ui/password";
 
@@ -15,14 +15,10 @@ interface Env {
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     return authorizer({
-      subjects,
       storage: CloudflareStorage({
         namespace: env.CloudflareAuthKV,
       }),
-      ttl: {
-        access: 30,
-        refresh: 60 * 60 * 24 * 30,
-      },
+      subjects,
       providers: {
         password: PasswordAdapter(
           PasswordUI({
@@ -32,11 +28,13 @@ export default {
           }),
         ),
       },
-      allow: async () => true,
       success: async (ctx, value) => {
-        return ctx.session("user", {
-          email: value.email,
-        });
+        if (value.provider === "password") {
+          return ctx.subject("user", {
+            email: value.email,
+          });
+        }
+        throw new Error("Invalid provider");
       },
     }).fetch(request, env, ctx);
   },

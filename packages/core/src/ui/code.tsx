@@ -4,10 +4,8 @@ import { CodeAdapterOptions } from "../adapter/code.js";
 import { UnknownStateError } from "../error.js";
 import { Layout } from "./base.js";
 import { FormAlert } from "./form.js";
-import { Theme } from "./theme.js";
 
 export function CodeUI(props: {
-  theme?: Theme;
   sendCode: (claims: Record<string, string>, code: string) => Promise<void>;
 }) {
   return {
@@ -16,7 +14,7 @@ export function CodeUI(props: {
     request: async (_req, state, _form, error) => {
       if (state.type === "start") {
         const jsx = (
-          <Layout theme={props.theme}>
+          <Layout>
             {/* Form */}
             <form data-component="form" method="post">
               {error?.type === "invalid_claim" && (
@@ -47,7 +45,7 @@ export function CodeUI(props: {
 
       if (state.type === "code") {
         const jsx = (
-          <Layout theme={props.theme}>
+          <Layout>
             <form data-component="form" class="form" method="post">
               {error?.type === "invalid_code" && (
                 <FormAlert message={"Invalid code"} />

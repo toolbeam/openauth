@@ -1,27 +1,27 @@
 import { PropsWithChildren } from "hono/jsx";
 import css from "./ui.css" assert { type: "text" };
-import { Theme } from "./theme.js";
+import { getTheme } from "./theme.js";
 
 export function Layout(
   props: PropsWithChildren<{
     size?: "small";
-    theme: Theme | undefined;
   }>,
 ) {
+  const theme = getTheme();
   function get(key: "primary" | "background" | "logo", mode: "light" | "dark") {
-    if (!props.theme) return;
-    if (!props.theme[key]) return;
-    if (typeof props.theme[key] === "string") return props.theme[key];
+    if (!theme) return;
+    if (!theme[key]) return;
+    if (typeof theme[key] === "string") return theme[key];
 
-    return props.theme[key][mode] as string | undefined;
+    return theme[key][mode] as string | undefined;
   }
 
   const radius = (() => {
-    if (props.theme?.radius === "none") return "0";
-    if (props.theme?.radius === "sm") return "1";
-    if (props.theme?.radius === "md") return "1.25";
-    if (props.theme?.radius === "lg") return "1.5";
-    if (props.theme?.radius === "full") return "1000000000001";
+    if (theme?.radius === "none") return "0";
+    if (theme?.radius === "sm") return "1";
+    if (theme?.radius === "md") return "1.25";
+    if (theme?.radius === "lg") return "1.5";
+    if (theme?.radius === "full") return "1000000000001";
     return "1";
   })();
 
@@ -32,18 +32,18 @@ export function Layout(
         "--color-background-dark": get("background", "dark"),
         "--color-primary-light": get("primary", "light"),
         "--color-primary-dark": get("primary", "dark"),
-        "--font-family": props.theme?.font?.family,
-        "--font-scale": props.theme?.font?.scale,
+        "--font-family": theme?.font?.family,
+        "--font-scale": theme?.font?.scale,
         "--border-radius": radius,
       }}
     >
       <head>
-        <title>{props.theme?.title || "OpenAuthJS"}</title>
+        <title>{theme?.title || "OpenAuthJS"}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href={props.theme?.favicon} />
+        <link rel="icon" href={theme?.favicon} />
         <style dangerouslySetInnerHTML={{ __html: css }} />
-        {props.theme?.css && (
-          <style dangerouslySetInnerHTML={{ __html: props.theme.css }} />
+        {theme?.css && (
+          <style dangerouslySetInnerHTML={{ __html: theme.css }} />
         )}
       </head>
       <body>

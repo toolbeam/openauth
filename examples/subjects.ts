@@ -5,8 +5,4 @@ export const subjects = createSubjects({
   user: object({
     email: string(),
   }),
-  api: object({
-    userID: string(),
-    workspaceID: string(),
-  }),
 });

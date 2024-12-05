@@ -36,7 +36,7 @@ export function createClient(input: {
     const cached = issuerCache.get(issuer!);
     if (cached) return cached;
     const wellKnown = (await (f || fetch)(
-      `${issuer}/.well-known/oauth-authorization-server`,
+      `${issuer}/.well-known/oauth-authorization-server`
     ).then((r) => r.json())) as WellKnown;
     issuerCache.set(issuer!, wellKnown);
     return wellKnown;
@@ -47,7 +47,7 @@ export function createClient(input: {
     const cached = jwksCache.get(issuer!);
     if (cached) return cached;
     const keyset = (await (f || fetch)(wk.jwks_uri).then((r) =>
-      r.json(),
+      r.json()
     )) as JSONWebKeySet;
     const result = createLocalJWKSet(keyset);
     jwksCache.set(issuer!, result);
@@ -56,20 +56,27 @@ export function createClient(input: {
 
   const result = {
     authorize(
-      provider: string,
       redirectURI: string,
       response: "code" | "token",
+      opts?: {
+        provider?: string;
+      }
     ) {
       const result = new URL(issuer + "/authorize");
-      result.searchParams.set("provider", provider);
+      if (opts?.provider) result.searchParams.set("provider", opts.provider);
       result.searchParams.set("client_id", input.clientID);
       result.searchParams.set("redirect_uri", redirectURI);
       result.searchParams.set("response_type", response);
       return result.toString();
     },
-    async pkce(provider: string, redirectURI: string) {
+    async pkce(
+      redirectURI: string,
+      opts?: {
+        provider?: string;
+      }
+    ) {
       const result = new URL(issuer + "/authorize");
-      result.searchParams.set("provider", provider);
+      if (opts?.provider) result.searchParams.set("provider", opts.provider);
       result.searchParams.set("client_id", input.clientID);
       result.searchParams.set("redirect_uri", redirectURI);
       result.searchParams.set("response_type", "code");
@@ -110,10 +117,12 @@ export function createClient(input: {
         issuer?: string;
         audience?: string;
         fetch?: typeof fetch;
-      },
+      }
     ): Promise<{
-      access?: string;
-      refresh?: string;
+      tokens?: {
+        access: string;
+        refresh: string;
+      };
       subject: {
         [type in keyof T]: {
           type: type;
@@ -163,8 +172,10 @@ export function createClient(input: {
             issuer,
             fetch: options?.fetch,
           });
-          verified.access = json.access_token;
-          verified.refresh = json.refresh_token;
+          verified.tokens = {
+            access: json.access_token,
+            refresh: json.refresh_token,
+          };
           return verified;
         }
         throw e;

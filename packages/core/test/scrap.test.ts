@@ -15,7 +15,7 @@ const auth = authorizer({
   subjects,
   allow: async () => true,
   success: async (ctx) => {
-    return ctx.session("user", {
+    return ctx.subject("user", {
       userID: "123",
     });
   },
@@ -43,7 +43,6 @@ test("code flow", async () => {
     fetch: (a, b) => Promise.resolve(auth.request(a, b)),
   });
   const [verifier, authorization] = await client.pkce(
-    "dummy",
     "https://client.example.com/callback",
   );
   let response = await auth.request(authorization);

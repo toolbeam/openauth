@@ -1,5 +1,11 @@
 # @openauthjs/core
 
+## 0.0.15
+
+### Patch Changes
+
+- 047afb5: sync
+
 ## 0.0.14
 
 ### Patch Changes

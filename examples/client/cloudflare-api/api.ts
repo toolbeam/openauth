@@ -1,18 +1,20 @@
 import type { Service } from "@cloudflare/workers-types";
-import { subjects } from "../subjects.js";
 import { createClient } from "@openauthjs/core";
+import { subjects } from "../../subjects";
 
 interface Env {
   OPENAUTH_ISSUER: string;
   Auth: Service;
+  CloudflareAuth: Service;
 }
 
 export default {
   async fetch(request: Request, env: Env) {
-    process.env.OPENAUTH_ISSUER = env.OPENAUTH_ISSUER;
     const client = createClient({
-      clientID: "123",
+      clientID: "cloudflare-api",
+      // enables worker to worker communication if authorizer is also a worker
       fetch: (input, init) => env.CloudflareAuth.fetch(input, init),
+      issuer: env.OPENAUTH_ISSUER,
     });
     const url = new URL(request.url);
     const redirectURI = url.origin + "/callback";
@@ -30,10 +32,7 @@ export default {
           return new Response(e.toString());
         }
       case "/authorize":
-        return Response.redirect(
-          client.authorize("password", redirectURI, "code"),
-          302,
-        );
+        return Response.redirect(client.authorize(redirectURI, "code"), 302);
       case "/":
         const cookies = new URLSearchParams(
           request.headers.get("cookie")?.replaceAll("; ", "&"),
