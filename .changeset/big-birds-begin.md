@@ -1,5 +1,0 @@
----
-"@openauthjs/openauth": patch
----
-
-test
