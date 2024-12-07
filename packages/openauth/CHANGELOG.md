@@ -1,5 +1,11 @@
 # @openauthjs/openauth
 
+## 0.0.18
+
+### Patch Changes
+
+- bbf90c5: fix type issues when using ui components
+
 ## 0.0.17
 
 ### Patch Changes
