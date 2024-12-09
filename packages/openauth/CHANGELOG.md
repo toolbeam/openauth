@@ -1,5 +1,11 @@
 # @openauthjs/openauth
 
+## 0.0.20
+
+### Patch Changes
+
+- 1a0ff69: fix for theme not being applied
+
 ## 0.0.19
 
 ### Patch Changes
