@@ -6,15 +6,14 @@ import {
 
 import Database from "libsql";
 
-export interface SqliteStorageOptions {
+export interface LibsqlStorageOptions {
   persist?: string;
-  tableName?: string;
+  table?: string;
 }
 
-export function SQLiteStorage(input?: SqliteStorageOptions): StorageAdapter {
-  // initialize sqlite database and create the necessary table structure
+export function LibsqlStorage(input?: LibsqlStorageOptions): StorageAdapter {
   const db = new Database(input?.persist ?? ":memory:");
-  const TABLE_NAME = input?.tableName ?? "__openauth__kv_storage";
+  const TABLE_NAME = input?.table ?? "__openauth__kv";
 
   db.exec(
     `CREATE TABLE IF NOT EXISTS ${TABLE_NAME} (key TEXT PRIMARY KEY, value TEXT, ttl INTEGER)`
