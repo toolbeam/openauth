@@ -37,8 +37,8 @@ export function SQLiteStorage(input?: SqliteStorageOptions): StorageAdapter {
     async *scan(prefix: string[]) {
       const joined = joinKey(prefix);
       const rows = db
-        .prepare("SELECT key, value FROM storage WHERE key LIKE ?")
-        .all(joined + "%") as { key: string; value: string }[];
+        .prepare("SELECT key, value, ttl FROM storage WHERE key LIKE ?")
+        .all(joined + "%") as { key: string; value: string; ttl: number }[];
 
       for (const row of rows) {
         yield [splitKey(row.key), JSON.parse(row.value)];
