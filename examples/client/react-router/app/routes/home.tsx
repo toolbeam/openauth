@@ -12,17 +12,20 @@ export async function loader({ request }: Route.LoaderArgs) {
 
 export default function Page({ loaderData }: Route.ComponentProps) {
   if (!loaderData.user) {
-    return (<div>
-      <p>You are not authorized.</p>
-      <Link to="/login">Login</Link>
-    </div>)
+    return (
+      <div>
+        <p>You are not authorized.</p>
+        <Link to="/login">Login</Link>
+      </div>
+    )
   }
 
-  return (<div>
-    <p>Hello {loaderData.user.properties.email}</p>
-
-    <Form method="POST" action="/logout">
-      <button type="submit">Logout</button>
-    </Form>
-  </div>)
+  return (
+    <div>
+      <p>Hello {loaderData.user.properties.email}</p>
+      <Form method="POST" action="/logout">
+        <button type="submit">Logout</button>
+      </Form>
+    </div>
+  )
 }
