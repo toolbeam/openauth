@@ -1,5 +1,12 @@
 # @openauthjs/openauth
 
+## 0.0.23
+
+### Patch Changes
+
+- a585875: remove console.log
+- 079c514: feat: add JumpCloud
+
 ## 0.0.22
 
 ### Patch Changes
