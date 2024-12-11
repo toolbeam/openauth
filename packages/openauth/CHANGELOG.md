@@ -1,5 +1,11 @@
 # @openauthjs/openauth
 
+## 0.0.22
+
+### Patch Changes
+
+- d3391f4: do not import createClient from root - it causes some bundlers to include too much code
+
 ## 0.0.21
 
 ### Patch Changes
