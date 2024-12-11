@@ -45,6 +45,7 @@ import { getTheme, setTheme, Theme } from "./ui/theme.js";
 import { isDomainMatch } from "./util.js";
 import { DynamoStorage } from "./storage/dynamo.js";
 import { MemoryStorage } from "./storage/memory.js";
+import { SQLiteStorage } from "./storage/sqlite.js";
 
 export const aws = awsHandle;
 
@@ -125,6 +126,7 @@ export function authorizer<
     const parsed = JSON.parse(process.env.OPENAUTH_STORAGE);
     if (parsed.type === "dynamo") storage = DynamoStorage(parsed.options);
     if (parsed.type === "memory") storage = MemoryStorage();
+    if (parsed.type === "sqlite") storage = SQLiteStorage();
     if (parsed.type === "cloudflare")
       throw new Error(
         "Cloudflare storage cannot be configured through env because it requires bindings."
