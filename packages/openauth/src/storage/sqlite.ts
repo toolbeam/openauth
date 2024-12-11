@@ -3,7 +3,6 @@ import {
   splitKey,
   type StorageAdapter,
 } from "@openauthjs/openauth/storage/storage";
-
 import Database from "libsql";
 
 export interface SqliteStorageOptions {
@@ -20,8 +19,13 @@ export function SQLiteStorage(input?: SqliteStorageOptions): StorageAdapter {
     `CREATE TABLE IF NOT EXISTS ${TABLE_NAME} (key TEXT PRIMARY KEY, value TEXT, ttl INTEGER)`
   );
 
+  const cleanExpired = () => {
+    db.prepare(`DELETE FROM ${TABLE_NAME} WHERE ttl < ?`).run(Date.now());
+  };
+
   return {
     async get(key: string[]) {
+      cleanExpired();
       const joined = joinKey(key);
       const row = db
         .prepare(`SELECT value FROM ${TABLE_NAME} WHERE key = ?`)
@@ -39,6 +43,7 @@ export function SQLiteStorage(input?: SqliteStorageOptions): StorageAdapter {
       db.prepare(`DELETE FROM ${TABLE_NAME} WHERE key = ?`).run(joined);
     },
     async *scan(prefix: string[]) {
+      cleanExpired();
       const joined = joinKey(prefix);
       const rows = db
         .prepare(`SELECT key, value, ttl FROM ${TABLE_NAME} WHERE key LIKE ?`)
