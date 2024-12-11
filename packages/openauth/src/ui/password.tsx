@@ -74,6 +74,7 @@ export function PasswordUI(input: PasswordUIOptions) {
               type="password"
               name="password"
               placeholder="Password"
+              autoComplete="current-password"
             />
             <button data-component="button">Continue</button>
             <div data-component="form-footer">
@@ -130,6 +131,7 @@ export function PasswordUI(input: PasswordUIOptions) {
                   value={
                     !passwordError ? form?.get("password")?.toString() : ""
                   }
+                  autoComplete="new-password"
                 />
                 <input
                   data-component="input"
@@ -138,6 +140,7 @@ export function PasswordUI(input: PasswordUIOptions) {
                   required
                   autofocus={passwordError}
                   placeholder={copy.input_repeat}
+                  autoComplete="new-password"
                 />
                 <button data-component="button">Continue</button>
                 <div data-component="form-footer">
@@ -162,6 +165,7 @@ export function PasswordUI(input: PasswordUIOptions) {
                   maxLength={6}
                   required
                   placeholder={copy.input_code}
+                  autoComplete="one-time-code"
                 />
                 <button data-component="button">Continue</button>
               </>
@@ -208,6 +212,7 @@ export function PasswordUI(input: PasswordUIOptions) {
                   maxLength={6}
                   required
                   placeholder={copy.input_code}
+                  autoComplete="one-time-code"
                 />
               </>
             )}
@@ -224,6 +229,7 @@ export function PasswordUI(input: PasswordUIOptions) {
                   value={
                     !passwordError ? form?.get("password")?.toString() : ""
                   }
+                  autoComplete="new-password"
                 />
                 <input
                   data-component="input"
@@ -234,6 +240,7 @@ export function PasswordUI(input: PasswordUIOptions) {
                     !passwordError ? form?.get("password")?.toString() : ""
                   }
                   placeholder={copy.input_repeat}
+                  autoComplete="new-password"
                 />
               </>
             )}
