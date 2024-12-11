@@ -1,5 +1,11 @@
 # @openauthjs/openauth
 
+## 0.0.24
+
+### Patch Changes
+
+- f695881: feature: added apple adapter
+
 ## 0.0.23
 
 ### Patch Changes
