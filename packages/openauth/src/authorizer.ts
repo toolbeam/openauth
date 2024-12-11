@@ -101,7 +101,6 @@ export function authorizer<
   const ttlRefresh = input.ttl?.refresh ?? 60 * 60 * 24 * 365
   if (input.theme) {
     setTheme(input.theme)
-    console.log(getTheme())
   }
 
   const select = input.select ?? Select()
