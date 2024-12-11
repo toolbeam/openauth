@@ -1,5 +1,12 @@
 # @openauthjs/openauth
 
+## 0.0.21
+
+### Patch Changes
+
+- acc2c5f: add tests for memory adapter and fixed issues with ttl
+- 7630c87: added facebook, discord, and keycloak adapter
+
 ## 0.0.20
 
 ### Patch Changes
