@@ -10,13 +10,13 @@ export const client = createClient({
 export function setTokens(ctx: APIContext, access: string, refresh: string) {
   ctx.cookies.set("refresh_token", refresh, {
     httpOnly: true,
-    sameSite: "strict",
+    sameSite: "lax",
     path: "/",
     maxAge: 34560000,
   })
   ctx.cookies.set("access_token", access, {
     httpOnly: true,
-    sameSite: "strict",
+    sameSite: "lax",
     path: "/",
     maxAge: 34560000,
   })
