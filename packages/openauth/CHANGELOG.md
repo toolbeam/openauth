@@ -1,5 +1,12 @@
 # @openauthjs/openauth
 
+## 0.0.25
+
+### Patch Changes
+
+- 7e3fa38: feat(cognito): add CognitoAdapter
+- f496e3a: Set input autocomplete attribute in password UI
+
 ## 0.0.24
 
 ### Patch Changes
