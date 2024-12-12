@@ -137,7 +137,6 @@ export function createClient(input: {
     > {
       if (opts && opts.access) {
         const decoded = decodeJwt(opts.access)
-        console.log(decoded)
         if (!decoded) {
           return {
             err: new InvalidAccessTokenError(),
