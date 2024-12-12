@@ -1,5 +1,11 @@
 # @openauthjs/openauth
 
+## 0.0.26
+
+### Patch Changes
+
+- 5dd6aa4: feature: add twitter adapter
+
 ## 0.0.25
 
 ### Patch Changes
