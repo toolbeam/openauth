@@ -1,4 +1,10 @@
-import { createLocalJWKSet, errors, JSONWebKeySet, jwtVerify } from "jose"
+import {
+  createLocalJWKSet,
+  errors,
+  JSONWebKeySet,
+  jwtVerify,
+  decodeJwt,
+} from "jose"
 import { SubjectSchema } from "./session.js"
 import type { v1 } from "@standard-schema/spec"
 import {
@@ -109,7 +115,19 @@ export function createClient(input: {
         refresh: json.refresh_token as string,
       }
     },
-    async refresh(token: string) {
+    async refresh(
+      refresh: string,
+      opts?: {
+        access?: string
+      },
+    ) {
+      if (!opts?.access) {
+        const decoded = decodeJwt(refresh)
+        // allow 30s window for expiration
+        if (decoded.exp < Date.now() / 1000 + 30) {
+          return
+        }
+      }
       const tokens = await f(issuer + "/token", {
         method: "POST",
         headers: {
@@ -117,7 +135,7 @@ export function createClient(input: {
         },
         body: new URLSearchParams({
           grant_type: "refresh_token",
-          refresh_token: token,
+          refresh_token: refresh,
         }).toString(),
       })
       const json = (await tokens.json()) as any

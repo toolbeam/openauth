@@ -46,7 +46,8 @@ export default {
             },
           )
           const resp = Response.json(verified.subject)
-          setSession(resp, verified.access, verified.refresh)
+          if (verified.tokens)
+            setSession(resp, verified.tokens.access, verified.tokens.refresh)
           return resp
         } catch (e) {
           console.error(e)
@@ -58,21 +59,17 @@ export default {
   },
 }
 
-function setSession(
-  response: Response,
-  accessToken?: string,
-  refreshToken?: string,
-) {
-  if (accessToken) {
+function setSession(response: Response, access: string, refresh: string) {
+  if (access) {
     response.headers.append(
       "Set-Cookie",
-      `access_token=${accessToken}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2147483647`,
+      `access_token=${access}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2147483647`,
     )
   }
-  if (refreshToken) {
+  if (refresh) {
     response.headers.append(
       "Set-Cookie",
-      `refresh_token=${refreshToken}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2147483647`,
+      `refresh_token=${refresh}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2147483647`,
     )
   }
 }
