@@ -162,17 +162,18 @@ const app = authorizer({
   providers: { ... },
   subjects,
   async success(ctx, value) {
-    let userid;
+    let userID;
     if (value.provider === "password") {
       console.log(value.email);
-      userid = ... // lookup user or create them
+      userID = ... // lookup user or create them
     }
     if (value.provider === "github") {
       console.log(value.tokenset.access);
-      userid = ... // lookup user or create them
+      userID = ... // lookup user or create them
     }
-    return ctx.subject("user", {
-        userid,
+    return ctx.subject("user", { 
+      userID,
+      'a workspace id'
     });
   }
 })
@@ -220,7 +221,8 @@ Since this is a standard OAuth server you can use any libraries for OAuth and it
 ```ts
 import { createClient } from "@openauthjs/openauth/client"
 
-const client = createClient("my-client", {
+const client = createClient({
+  clientID: "my-client",
   issuer: "https://auth.myserver.com", // this is the url for your auth server
 })
 ```
