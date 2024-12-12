@@ -15,6 +15,7 @@ async function getToken() {
     access: _access,
   })
   if (next.err) return
+  if (!next.tokens) return _access
   localStorage.setItem("refresh", next.tokens.refresh)
   _refresh = next.tokens.refresh
   _access = next.tokens.access
