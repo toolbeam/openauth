@@ -1,6 +1,6 @@
 {
   "name": "@openauthjs/openauth",
-  "version": "0.0.26",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "build": "bun run script/build.ts"
