@@ -1,5 +1,11 @@
 # @openauthjs/openauth
 
+## 0.1.1
+
+### Patch Changes
+
+- 04cd031: if only single provider is configured, skip provider selection
+
 ## 0.1.0
 
 ### Minor Changes
