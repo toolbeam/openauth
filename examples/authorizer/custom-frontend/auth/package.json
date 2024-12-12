@@ -1,0 +1,7 @@
+{
+  "name": "@openauthjs/example-custom-frontend-authorizer",
+  "version": "0.0.0",
+  "dependencies": {
+    "@openauthjs/openauth": "workspace:*"
+  }
+}

@@ -53,12 +53,17 @@ export function CodeAdapter<
         err?: CodeAdapterError,
       ) {
         await ctx.set<CodeAdapterState>(c, "adapter", 60 * 60 * 24, next)
-        return ctx.forward(c, await config.request(c.req.raw, next, fd, err))
+        const resp = ctx.forward(
+          c,
+          await config.request(c.req.raw, next, fd, err),
+        )
+        return resp
       }
       routes.get("/authorize", async (c) => {
-        return transition(c, {
+        const resp = await transition(c, {
           type: "start",
         })
+        return resp
       })
 
       routes.post("/authorize", async (c) => {
