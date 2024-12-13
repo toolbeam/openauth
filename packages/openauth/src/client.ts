@@ -111,10 +111,10 @@ export function createClient(input: {
           code_verifier: verifier || "",
         }).toString(),
       })
-      const json = (await tokens.json()) as any
+      const json = (await tokens.json()) as Record<string, unknown>;
       if (!tokens.ok) {
-        console.error(json)
-        throw new InvalidAuthorizationCodeError()
+        const error = new InvalidAuthorizationCodeError(json);
+        throw error;
       }
       return {
         access: json.access_token as string,
@@ -182,13 +182,13 @@ export function createClient(input: {
     ): Promise<
       | {
           err?: undefined
-          tokens?: Tokens
           subject: {
             [type in keyof T]: {
               type: type
               properties: v1.InferOutput<T[type]>
             }
           }[keyof T]
+          tokens?: Tokens
         }
       | {
           err: InvalidRefreshTokenError | InvalidAccessTokenError
@@ -233,9 +233,9 @@ export function createClient(input: {
           verified.tokens = refreshed.tokens
           return verified
         }
-        console.error(e)
+        const error = new InvalidAccessTokenError(e);
         return {
-          err: new InvalidAccessTokenError(),
+          err: error,
         }
       }
     },

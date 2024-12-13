@@ -9,6 +9,7 @@ export class OauthError extends Error {
       | "server_error"
       | "temporarily_unavailable",
     public description: string,
+    public cause?: unknown,
   ) {
     super(error + " - " + description)
   }
@@ -42,33 +43,43 @@ export class UnauthorizedClientError extends OauthError {
 }
 
 export class UnknownStateError extends Error {
-  constructor() {
+  public cause?: unknown;
+  constructor(cause?: unknown) {
     super(
       "The browser was in an unknown state. This could be because certain cookies expired or the browser was switched in the middle of an authentication flow",
     )
+    this.cause = cause;
   }
 }
 
 export class InvalidSubjectError extends Error {
-  constructor() {
+  public cause?: unknown;
+  constructor(cause?: unknown) {
     super("Invalid subject")
+    this.cause = cause;
   }
 }
 
 export class InvalidRefreshTokenError extends Error {
-  constructor() {
+  public cause?: unknown;
+  constructor(cause?: unknown) {
     super("Invalid refresh token")
+    this.cause = cause;
   }
 }
 
 export class InvalidAccessTokenError extends Error {
-  constructor() {
+  public cause?: unknown;
+  constructor(cause?: unknown) {
     super("Invalid access token")
+    this.cause = cause;
   }
 }
 
 export class InvalidAuthorizationCodeError extends Error {
-  constructor() {
+  public cause?: unknown;
+  constructor(cause?: unknown) {
     super("Invalid authorization code")
+    this.cause = cause;
   }
 }

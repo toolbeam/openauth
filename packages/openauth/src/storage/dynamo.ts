@@ -1,6 +1,19 @@
 import { client } from "./aws.js"
 import { joinKey, StorageAdapter } from "./storage.js"
 
+interface DynamoDBItem {
+  [key: string]: {
+    S?: string
+    N?: string
+  }
+}
+
+interface DynamoDBResponse {
+  Item?: DynamoDBItem
+  Items?: DynamoDBItem[]
+  LastEvaluatedKey?: DynamoDBItem
+}
+
 export interface DynamoStorageOptions {
   table: string
   pk?: string
@@ -26,7 +39,7 @@ export function DynamoStorage(options: DynamoStorageOptions) {
     }
   }
 
-  async function dynamo(action: string, payload: any) {
+  async function dynamo(action: string, payload: Record<string, unknown>): Promise<DynamoDBResponse> {
     const client = await c
     const response = await client.fetch(
       `https://dynamodb.${client.region}.amazonaws.com`,
@@ -41,10 +54,14 @@ export function DynamoStorage(options: DynamoStorageOptions) {
     )
 
     if (!response.ok) {
-      throw new Error(`DynamoDB request failed: ${response.statusText}`)
+      const errorText = await response.text();
+      throw new Error(
+        `DynamoDB ${action} request failed: ${response.statusText}. ` +
+        `Status: ${response.status}. Error: ${errorText}`
+      );
     }
 
-    return response.json() as Promise<any>
+    return response.json()
   }
 
   return {
@@ -59,10 +76,10 @@ export function DynamoStorage(options: DynamoStorageOptions) {
       }
       const result = await dynamo("GetItem", params)
       if (!result.Item) return
-      if (result.Item.expiry && result.Item.expiry.N < Date.now() / 1000) {
+      if (result.Item.expiry?.N && Number(result.Item.expiry.N) < Date.now() / 1000) {
         return
       }
-      return JSON.parse(result.Item.value.S)
+      return JSON.parse(result.Item.value.S || "{}")
     },
 
     async set(key: string[], value: any, ttl) {
@@ -122,10 +139,10 @@ export function DynamoStorage(options: DynamoStorageOptions) {
         const result = await dynamo("Query", params)
 
         for (const item of result.Items || []) {
-          if (item.expiry && item.expiry.N < now) {
+          if (item.expiry?.N && Number(item.expiry.N) < now) {
             continue
           }
-          yield [[item[pk].S, item[sk].S], JSON.parse(item.value.S)]
+          yield [[item[pk].S || "", item[sk].S || ""], JSON.parse(item.value.S || "{}")]
         }
 
         if (!result.LastEvaluatedKey) break
