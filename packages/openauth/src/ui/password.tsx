@@ -32,6 +32,7 @@ const DEFAULT_COPY = {
   input_password: "Password",
   input_code: "Code",
   input_repeat: "Repeat password",
+  button_continue: "Continue",
 } satisfies {
   [key in `error_${
     | PasswordLoginError["type"]
@@ -73,10 +74,10 @@ export function PasswordUI(input: PasswordUIOptions) {
               required
               type="password"
               name="password"
-              placeholder="Password"
+              placeholder={copy.register_prompt}
               autoComplete="current-password"
             />
-            <button data-component="button">Continue</button>
+            <button data-component="button">{copy.button_continue}</button>
             <div data-component="form-footer">
               <span>
                 {copy.register_prompt}{" "}
@@ -142,7 +143,7 @@ export function PasswordUI(input: PasswordUIOptions) {
                   placeholder={copy.input_repeat}
                   autoComplete="new-password"
                 />
-                <button data-component="button">Continue</button>
+                <button data-component="button">{copy.button_continue}</button>
                 <div data-component="form-footer">
                   <span>
                     {copy.login_prompt}{" "}
@@ -167,7 +168,7 @@ export function PasswordUI(input: PasswordUIOptions) {
                   placeholder={copy.input_code}
                   autoComplete="one-time-code"
                 />
-                <button data-component="button">Continue</button>
+                <button data-component="button">{copy.button_continue}</button>
               </>
             )}
           </form>
@@ -244,7 +245,7 @@ export function PasswordUI(input: PasswordUIOptions) {
                 />
               </>
             )}
-            <button data-component="button">Continue</button>
+            <button data-component="button">{copy.button_continue}</button>
           </form>
           {state.type === "code" && (
             <form method="post">
