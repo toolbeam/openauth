@@ -1,25 +1,21 @@
+export type ColorScheme = {
+  dark: string
+  light: string
+}
+
 export interface Theme {
   title?: string
   favicon?: string
   radius?: "none" | "sm" | "md" | "lg" | "full"
   primary:
     | string
-    | {
-        dark: string
-        light: string
-      }
+    | ColorScheme
   background?:
     | string
-    | {
-        dark: string
-        light: string
-      }
+    | ColorScheme
   logo?:
     | string
-    | {
-        dark: string
-        light: string
-      }
+    | ColorScheme
   font?: {
     family?: string
     scale?: string
