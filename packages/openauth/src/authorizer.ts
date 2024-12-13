@@ -272,7 +272,7 @@ export function authorizer<
       {
         ...value,
       },
-      Date.now() / 1000 + ttlRefresh,
+      ttlRefresh,
     )
     return {
       access: await new SignJWT({
