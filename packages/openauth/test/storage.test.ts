@@ -14,8 +14,9 @@ describe("set", () => {
     expect(result).toEqual({ name: "Test User" })
   })
 
-  test("ttl", async () => {
-    await storage.set(["temp", "key"], { value: "value" }, 0.1) // 100ms TTL
+  test("expiry", async () => {
+    const expiry = new Date(Date.now() + 100) // 100ms in the future
+    await storage.set(["temp", "key"], { value: "value" }, expiry)
     let result = await storage.get(["temp", "key"])
     expect(result?.value).toBe("value")
 
@@ -73,9 +74,10 @@ describe("scan", () => {
     expect(results).toContainEqual([["users", "2"], { id: 2 }])
   })
 
-  test("ttl", async () => {
-    await storage.set(["temp", "1"], "a", 0.1)
-    await storage.set(["temp", "2"], "b", 0.1)
+  test("expiry", async () => {
+    const expiry = new Date(Date.now() + 100) // 100ms in the future
+    await storage.set(["temp", "1"], "a", expiry)
+    await storage.set(["temp", "2"], "b", expiry)
     await storage.set(["temp", "3"], "c")
     expect(await Array.fromAsync(storage.scan(["temp"]))).toHaveLength(3)
     await new Promise((resolve) => setTimeout(resolve, 150))
