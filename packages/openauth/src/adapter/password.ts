@@ -295,7 +295,6 @@ export function PasswordAdapter(config: PasswordConfig) {
             adapter.email,
             "subject",
           ])
-          console.log("invalidating", subject, "for", adapter.email)
           if (subject) await ctx.invalidate(subject)
 
           return c.redirect(adapter.redirect, 302)

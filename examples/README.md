@@ -23,4 +23,6 @@ $ cd client/astro
 $ bun dev
 ```
 
-Now visit http://localhost:4321 (the astro app) and experience the auth flow.
+Now visit `http://localhost:4321` (the astro app) and experience the auth flow.
+
+Or head over to `http://localhost:3000/password/authorize` to try the password flow directly.
