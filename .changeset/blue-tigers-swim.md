@@ -1,5 +1,5 @@
 ---
-"@openauth/openauth": major
+"@openauth/openauth": patch
 ---
 
-BREAKING CHANGE: Storage interface now uses Date objects for expiry instead of TTL seconds
+feat: improve internal timestamp handling in storage adapters
