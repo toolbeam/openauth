@@ -3,7 +3,8 @@
   "version": "0.1.1",
   "type": "module",
   "scripts": {
-    "build": "bun run script/build.ts"
+    "build": "bun run script/build.ts",
+    "test": "bun test"
   },
   "sideEffects": false,
   "devDependencies": {
