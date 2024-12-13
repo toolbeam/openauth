@@ -1,8 +1,22 @@
-import { expect, test } from "bun:test"
-import { authorizer } from "../src/authorizer.js"
-import { MemoryStorage } from "../src/storage/memory.js"
-import { createClient, createSubjects } from "../src/index.js"
+import {
+  afterAll,
+  expect,
+  test,
+  setSystemTime,
+  spyOn,
+  mock,
+  describe,
+  beforeEach,
+} from "bun:test"
 import { object, string } from "valibot"
+import { authorizer } from "../src/authorizer.js"
+import { createClient } from "../src/client.js"
+import {
+  InvalidAccessTokenError,
+  InvalidRefreshTokenError,
+} from "../src/error.js"
+import { createSubjects } from "../src/index.js"
+import { MemoryStorage } from "../src/storage/memory.js"
 
 const subjects = createSubjects({
   user: object({
@@ -10,8 +24,10 @@ const subjects = createSubjects({
   }),
 })
 
+let storage = MemoryStorage()
+
 const auth = authorizer({
-  storage: MemoryStorage(),
+  storage,
   subjects,
   allow: async () => true,
   success: async (ctx) => {
@@ -20,7 +36,8 @@ const auth = authorizer({
     })
   },
   ttl: {
-    access: 1,
+    access: 60,
+    refresh: 6000,
   },
   providers: {
     dummy: {
@@ -32,11 +49,30 @@ const auth = authorizer({
           })
         })
       },
+      client: async ({ clientID, clientSecret, params }) => {
+        if (clientID !== "myuser" && clientSecret !== "mypass") {
+          throw new Error("Wrong credentials")
+        }
+        return {
+          clientID,
+        }
+      },
     },
   },
 })
 
+const expectNonEmptyString = expect.stringMatching(/.+/)
+
+const consoleSpy = spyOn(console, "error").mockImplementation(mock())
+setSystemTime(new Date("1/1/2024")) // pause time at arbitrary date
+
+afterAll(() => {
+  setSystemTime()
+  consoleSpy.mockRestore()
+})
+
 test("code flow", async () => {
+  storage = MemoryStorage()
   const client = createClient({
     issuer: "https://auth.example.com",
     clientID: "123",
@@ -61,20 +97,166 @@ test("code flow", async () => {
     "https://client.example.com/callback",
     verifier,
   )
-  expect(tokens.access).toBeTruthy()
-  expect(tokens.refresh).toBeTruthy()
-  const verified = await client.verify(subjects, tokens.access)
-  expect(verified.subject.type).toBe("user")
-  if (verified.subject.type !== "user") throw new Error("Invalid subject")
-  expect(verified.subject.properties.userID).toBe("123")
-  await new Promise((resolve) => setTimeout(resolve, 2000))
-  expect(client.verify(subjects, tokens.access)).rejects.toThrow()
-  const next = await client.verify(subjects, tokens.access, {
-    refresh: tokens.refresh,
+  expect(tokens).toStrictEqual({
+    access: expectNonEmptyString,
+    refresh: expectNonEmptyString,
   })
-  expect(next.access).toBeDefined()
-  expect(next.refresh).toBeDefined()
-  expect(next.access).not.toEqual(tokens.access)
-  expect(next.refresh).not.toEqual(tokens.refresh)
-  await client.verify(subjects, next.access!)
+  const verified = await client.verify(subjects, tokens.access)
+  expect(verified).toStrictEqual({
+    subject: {
+      type: "user",
+      properties: {
+        userID: "123",
+      },
+    },
+  })
+})
+
+test("client credentials flow", async () => {
+  const client = createClient({
+    issuer: "https://auth.example.com",
+    clientID: "123",
+    fetch: (a, b) => Promise.resolve(auth.request(a, b)),
+  })
+  const response = await auth.request("https://auth.example.com/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      grant_type: "client_credentials",
+      provider: "dummy",
+      client_id: "myuser",
+      client_secret: "mypass",
+    }).toString(),
+  })
+  expect(response.status).toBe(200)
+  const tokens = await response.json()
+  expect(tokens).toStrictEqual({
+    access_token: expectNonEmptyString,
+    refresh_token: expectNonEmptyString,
+  })
+  const verified = await client.verify(subjects, tokens.access_token)
+  expect(verified).toStrictEqual({
+    subject: {
+      type: "user",
+      properties: {
+        userID: "123",
+      },
+    },
+  })
+})
+
+describe("refresh token", () => {
+  let tokens: { access: string; refresh: string }
+  let client: ReturnType<typeof createClient>
+
+  const requestRefreshToken = async (refresh_token) =>
+    auth.request("https://auth.example.com/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        ...(refresh_token ? { refresh_token } : {}),
+      }).toString(),
+    })
+
+  beforeEach(async () => {
+    client = createClient({
+      issuer: "https://auth.example.com",
+      clientID: "123",
+      fetch: (a, b) => Promise.resolve(auth.request(a, b)),
+    })
+    const [verifier, authorization] = await client.pkce(
+      "https://client.example.com/callback",
+    )
+    let response = await auth.request(authorization)
+    response = await auth.request(response.headers.get("location")!, {
+      headers: {
+        cookie: response.headers.get("set-cookie")!,
+      },
+    })
+    const location = new URL(response.headers.get("location")!)
+    const code = location.searchParams.get("code")
+    tokens = await client.exchange(
+      code!,
+      "https://client.example.com/callback",
+      verifier,
+    )
+  })
+
+  test("success", async () => {
+    setSystemTime(Date.now() + 1000 * 60 + 1000)
+    let response = await requestRefreshToken(tokens.refresh)
+    expect(response.status).toBe(200)
+    const refreshed = await response.json()
+    expect(refreshed).toStrictEqual({
+      access_token: expectNonEmptyString,
+      refresh_token: expectNonEmptyString,
+    })
+    expect(refreshed.access_token).not.toEqual(tokens.access)
+    expect(refreshed.refresh_token).not.toEqual(tokens.refresh)
+
+    const verified = await client.verify(subjects, refreshed.access_token)
+    expect(verified).toStrictEqual({
+      subject: {
+        type: "user",
+        properties: {
+          userID: "123",
+        },
+      },
+    })
+  })
+
+  test("success with valid access token", async () => {
+    // have to increment the time so new access token claims are different (i.e. exp)
+    setSystemTime(Date.now() + 1000)
+    let response = await requestRefreshToken(tokens.refresh)
+    expect(response.status).toBe(200)
+    const refreshed = await response.json()
+    expect(refreshed).toStrictEqual({
+      access_token: expectNonEmptyString,
+      refresh_token: expectNonEmptyString,
+    })
+
+    expect(refreshed.access_token).not.toEqual(tokens.access)
+    expect(refreshed.refresh_token).not.toEqual(tokens.refresh)
+
+    const verified = await client.verify(subjects, refreshed.access_token)
+    expect(verified).toStrictEqual({
+      subject: {
+        type: "user",
+        properties: {
+          userID: "123",
+        },
+      },
+    })
+  })
+
+  test("expired failure", async () => {
+    setSystemTime(Date.now() + 1000 * 6000 + 1000)
+    let response = await requestRefreshToken(tokens.refresh)
+    expect(response.status).toBe(400)
+    const reused = await response.json()
+    expect(reused.error).toBe("invalid_grant")
+  })
+
+  test("reuse failure", async () => {
+    let response = await requestRefreshToken(tokens.refresh)
+    expect(response.status).toBe(200)
+
+    response = await requestRefreshToken(tokens.refresh)
+    expect(response.status).toBe(400)
+    const reused = await response.json()
+    expect(reused.error).toBe("invalid_grant")
+  })
+
+  test("missing failure", async () => {
+    let response = await requestRefreshToken("")
+    expect(response.status).toBe(400)
+    const reused = await response.json()
+    expect(reused.error).toBe("invalid_request")
+  })
 })
