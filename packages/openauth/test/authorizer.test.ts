@@ -1,20 +1,14 @@
 import {
-  afterAll,
   expect,
   test,
   setSystemTime,
-  spyOn,
-  mock,
   describe,
   beforeEach,
+  afterEach,
 } from "bun:test"
 import { object, string } from "valibot"
 import { authorizer } from "../src/authorizer.js"
 import { createClient } from "../src/client.js"
-import {
-  InvalidAccessTokenError,
-  InvalidRefreshTokenError,
-} from "../src/error.js"
 import { createSubjects } from "../src/index.js"
 import { MemoryStorage } from "../src/storage/memory.js"
 
@@ -25,7 +19,6 @@ const subjects = createSubjects({
 })
 
 let storage = MemoryStorage()
-
 const auth = authorizer({
   storage,
   subjects,
@@ -63,87 +56,91 @@ const auth = authorizer({
 
 const expectNonEmptyString = expect.stringMatching(/.+/)
 
-const consoleSpy = spyOn(console, "error").mockImplementation(mock())
-setSystemTime(new Date("1/1/2024")) // pause time at arbitrary date
-
-afterAll(() => {
-  setSystemTime()
-  consoleSpy.mockRestore()
-})
-
-test("code flow", async () => {
+beforeEach(async () => {
   storage = MemoryStorage()
-  const client = createClient({
-    issuer: "https://auth.example.com",
-    clientID: "123",
-    fetch: (a, b) => Promise.resolve(auth.request(a, b)),
-  })
-  const [verifier, authorization] = await client.pkce(
-    "https://client.example.com/callback",
-  )
-  let response = await auth.request(authorization)
-  expect(response.status).toBe(302)
-  response = await auth.request(response.headers.get("location")!, {
-    headers: {
-      cookie: response.headers.get("set-cookie")!,
-    },
-  })
-  expect(response.status).toBe(302)
-  const location = new URL(response.headers.get("location")!)
-  const code = location.searchParams.get("code")
-  expect(code).not.toBeNull()
-  const tokens = await client.exchange(
-    code!,
-    "https://client.example.com/callback",
-    verifier,
-  )
-  expect(tokens).toStrictEqual({
-    access: expectNonEmptyString,
-    refresh: expectNonEmptyString,
-  })
-  const verified = await client.verify(subjects, tokens.access)
-  expect(verified).toStrictEqual({
-    subject: {
-      type: "user",
-      properties: {
-        userID: "123",
+  setSystemTime(new Date("1/1/2024"))
+})
+
+afterEach(() => {
+  setSystemTime()
+})
+
+describe("code flow", () => {
+  test("success", async () => {
+    const client = createClient({
+      issuer: "https://auth.example.com",
+      clientID: "123",
+      fetch: (a, b) => Promise.resolve(auth.request(a, b)),
+    })
+    const [verifier, authorization] = await client.pkce(
+      "https://client.example.com/callback",
+    )
+    let response = await auth.request(authorization)
+    expect(response.status).toBe(302)
+    response = await auth.request(response.headers.get("location")!, {
+      headers: {
+        cookie: response.headers.get("set-cookie")!,
       },
-    },
+    })
+    expect(response.status).toBe(302)
+    const location = new URL(response.headers.get("location")!)
+    const code = location.searchParams.get("code")
+    expect(code).not.toBeNull()
+    const tokens = await client.exchange(
+      code!,
+      "https://client.example.com/callback",
+      verifier,
+    )
+    expect(tokens).toStrictEqual({
+      access: expectNonEmptyString,
+      refresh: expectNonEmptyString,
+    })
+    const verified = await client.verify(subjects, tokens.access)
+    expect(verified).toStrictEqual({
+      subject: {
+        type: "user",
+        properties: {
+          userID: "123",
+        },
+      },
+    })
   })
 })
 
-test("client credentials flow", async () => {
-  const client = createClient({
-    issuer: "https://auth.example.com",
-    clientID: "123",
-    fetch: (a, b) => Promise.resolve(auth.request(a, b)),
-  })
-  const response = await auth.request("https://auth.example.com/token", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      grant_type: "client_credentials",
-      provider: "dummy",
-      client_id: "myuser",
-      client_secret: "mypass",
-    }).toString(),
-  })
-  expect(response.status).toBe(200)
-  const tokens = await response.json()
-  expect(tokens).toStrictEqual({
-    access_token: expectNonEmptyString,
-    refresh_token: expectNonEmptyString,
-  })
-  const verified = await client.verify(subjects, tokens.access_token)
-  expect(verified).toStrictEqual({
-    subject: {
-      type: "user",
-      properties: {
-        userID: "123",
+describe("client credentials flow", () => {
+  test("success", async () => {
+    const client = createClient({
+      issuer: "https://auth.example.com",
+      clientID: "123",
+      fetch: (a, b) => Promise.resolve(auth.request(a, b)),
+    })
+    const response = await auth.request("https://auth.example.com/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
       },
-    },
+      body: new URLSearchParams({
+        grant_type: "client_credentials",
+        provider: "dummy",
+        client_id: "myuser",
+        client_secret: "mypass",
+      }).toString(),
+    })
+    expect(response.status).toBe(200)
+    const tokens = await response.json()
+    expect(tokens).toStrictEqual({
+      access_token: expectNonEmptyString,
+      refresh_token: expectNonEmptyString,
+    })
+    const verified = await client.verify(subjects, tokens.access_token)
+    expect(verified).toStrictEqual({
+      subject: {
+        type: "user",
+        properties: {
+          userID: "123",
+        },
+      },
+    })
   })
 })
 
