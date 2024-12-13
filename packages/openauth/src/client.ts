@@ -111,10 +111,10 @@ export function createClient(input: {
           code_verifier: verifier || "",
         }).toString(),
       })
-      const json = (await tokens.json()) as Record<string, unknown>;
+      const json = (await tokens.json()) as Record<string, unknown>
       if (!tokens.ok) {
-        const error = new InvalidAuthorizationCodeError(json);
-        throw error;
+        const error = new InvalidAuthorizationCodeError(json)
+        throw error
       }
       return {
         access: json.access_token as string,
@@ -233,7 +233,7 @@ export function createClient(input: {
           verified.tokens = refreshed.tokens
           return verified
         }
-        const error = new InvalidAccessTokenError(e);
+        const error = new InvalidAccessTokenError(e)
         return {
           err: error,
         }

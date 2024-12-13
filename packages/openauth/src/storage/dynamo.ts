@@ -39,7 +39,10 @@ export function DynamoStorage(options: DynamoStorageOptions) {
     }
   }
 
-  async function dynamo(action: string, payload: Record<string, unknown>): Promise<DynamoDBResponse> {
+  async function dynamo(
+    action: string,
+    payload: Record<string, unknown>,
+  ): Promise<DynamoDBResponse> {
     const client = await c
     const response = await client.fetch(
       `https://dynamodb.${client.region}.amazonaws.com`,
@@ -54,11 +57,11 @@ export function DynamoStorage(options: DynamoStorageOptions) {
     )
 
     if (!response.ok) {
-      const errorText = await response.text();
+      const errorText = await response.text()
       throw new Error(
         `DynamoDB ${action} request failed: ${response.statusText}. ` +
-        `Status: ${response.status}. Error: ${errorText}`
-      );
+          `Status: ${response.status}. Error: ${errorText}`,
+      )
     }
 
     return response.json()
@@ -76,7 +79,10 @@ export function DynamoStorage(options: DynamoStorageOptions) {
       }
       const result = await dynamo("GetItem", params)
       if (!result.Item) return
-      if (result.Item.expiry?.N && Number(result.Item.expiry.N) < Date.now() / 1000) {
+      if (
+        result.Item.expiry?.N &&
+        Number(result.Item.expiry.N) < Date.now() / 1000
+      ) {
         return
       }
       return JSON.parse(result.Item.value.S || "{}")
@@ -142,7 +148,10 @@ export function DynamoStorage(options: DynamoStorageOptions) {
           if (item.expiry?.N && Number(item.expiry.N) < now) {
             continue
           }
-          yield [[item[pk].S || "", item[sk].S || ""], JSON.parse(item.value.S || "{}")]
+          yield [
+            [item[pk].S || "", item[sk].S || ""],
+            JSON.parse(item.value.S || "{}"),
+          ]
         }
 
         if (!result.LastEvaluatedKey) break

@@ -2,7 +2,12 @@
  * Valid types that can be stored in the storage adapter
  * Includes primitive types and nested objects with unknown values
  */
-export type StorageValue = string | number | boolean | null | Record<string, unknown>;
+export type StorageValue =
+  | string
+  | number
+  | boolean
+  | null
+  | Record<string, unknown>
 
 /**
  * Interface for storage operations in OpenAuth
@@ -83,7 +88,10 @@ export namespace Storage {
    * @param key - Array of key segments
    * @returns Promise resolving to typed value or undefined
    */
-  export function get<T extends StorageValue>(adapter: StorageAdapter, key: string[]) {
+  export function get<T extends StorageValue>(
+    adapter: StorageAdapter,
+    key: string[],
+  ) {
     return adapter.get(encode(key)) as Promise<T | undefined>
   }
 
@@ -123,7 +131,7 @@ export namespace Storage {
     key: string[],
   ): AsyncIterable<[string[], T]> {
     for await (const [k, v] of adapter.scan(encode(key))) {
-      yield [k, v as T];
+      yield [k, v as T]
     }
   }
 }
