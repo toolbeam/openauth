@@ -12,11 +12,11 @@ type OnlyOne<T> = T extends RedisStorageCredentials
     ? T
     : never
   : RedisStorageOptions extends T
-  ? T
-  : never
+    ? T
+    : never
 
 export function RedisStorage<
-  T extends RedisStorageOptions | RedisStorageCredentials
+  T extends RedisStorageOptions | RedisStorageCredentials,
 >(opts: OnlyOne<T>): StorageAdapter {
   const client =
     "connectionUrl" in opts ? new Redis(opts.connectionUrl) : new Redis(opts)
@@ -33,7 +33,7 @@ export function RedisStorage<
           joinKey(key),
           JSON.stringify(value),
           "EX",
-          Math.trunc(ttl)
+          Math.trunc(ttl),
         )
       } else {
         await client.set(joinKey(key), JSON.stringify(value))
@@ -43,13 +43,28 @@ export function RedisStorage<
       await client.del(joinKey(key))
     },
     async *scan(prefix: string[]) {
-      const keys = await client.keys(`${joinKey(prefix)}*`)
+      let cursor = "0"
 
-      for (const key of keys) {
-        const value = await client.get(key)
-        if (value !== null) {
-          yield [splitKey(key), JSON.parse(value)]
+      while (true) {
+        let [next, keys] = await client.scan(
+          cursor,
+          "MATCH",
+          `${joinKey(prefix)}*`,
+        )
+
+        for (const key of keys) {
+          const value = await client.get(key)
+          if (value !== null) {
+            yield [splitKey(key), JSON.parse(value)]
+          }
         }
+
+        // Number(..) cant handle 64bit integer
+        if (BigInt(next) === BigInt(0)) {
+          break
+        }
+
+        cursor = next
       }
     },
   }
