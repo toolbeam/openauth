@@ -1,5 +1,13 @@
 # @openauthjs/openauth
 
+## 0.1.2
+
+### Patch Changes
+
+- 584728f: Add common ColorScheme
+- 41acdc2: ui: missing copy in password.tsx
+- 2aa531b: Add GitHub Actions workflow for running tests
+
 ## 0.1.1
 
 ### Patch Changes
