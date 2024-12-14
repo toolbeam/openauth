@@ -44,33 +44,34 @@ export function MemoryStorage(input?: MemoryStorageOptions): StorageAdapter {
   return {
     async get(key: string[]) {
       const match = search(joinKey(key))
-      if (match.found && match) {
-        const entry = store[match.index][1]
-        if (entry.expiry && entry.expiry < Date.now()) {
-          store.splice(match.index, 1)
-          return
-        }
-        return entry.value
+      if (!match.found) return undefined
+      const entry = store[match.index][1]
+      if (entry.expiry && Date.now() >= entry.expiry) {
+        store.splice(match.index, 1)
+        await save()
+        return undefined
       }
-      return
+      return entry.value
     },
-    async set(key: string[], value: any, expiry?: Date | number) {
+    async set(key: string[], value: any, expiry?: Date) {
       const joined = joinKey(key)
       const match = search(joined)
+      // Handle both Date objects and TTL numbers while maintaining Date type in signature
+      const expiryTime = expiry instanceof Date
+        ? expiry.getTime()
+        : (expiry as number) !== undefined
+          ? Date.now() + (expiry as number) * 1000
+          : undefined
       const entry = [
         joined,
         {
           value,
-          expiry:
-            typeof expiry === "number"
-              ? Date.now() + expiry * 1000
-              : expiry?.getTime(),
+          expiry: expiryTime,
         },
       ] as (typeof store)[number]
       if (!match.found) {
         store.splice(match.index, 0, entry)
-      }
-      if (match.found) {
+      } else {
         store[match.index] = entry
       }
       await save()
@@ -80,17 +81,16 @@ export function MemoryStorage(input?: MemoryStorageOptions): StorageAdapter {
       const match = search(joined)
       if (match.found) {
         store.splice(match.index, 1)
+        await save()
       }
-      await save()
     },
     async *scan(prefix: string[]) {
+      const now = Date.now()
+      const prefixStr = joinKey(prefix)
       for (const [key, entry] of store) {
-        if (key.startsWith(joinKey(prefix))) {
-          if (entry.expiry && entry.expiry < Date.now()) {
-            continue
-          }
-          yield [splitKey(key), entry.value]
-        }
+        if (!key.startsWith(prefixStr)) continue
+        if (entry.expiry && now >= entry.expiry) continue
+        yield [splitKey(key), entry.value]
       }
     },
   }
