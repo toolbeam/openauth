@@ -1,5 +1,11 @@
 # @openauthjs/openauth
 
+## 0.2.1
+
+### Patch Changes
+
+- 83125f1: Remove predefined scopes from Spotify adapter to allow user-defined scopes
+
 ## 0.2.0
 
 ### Minor Changes
