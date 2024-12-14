@@ -12,6 +12,7 @@ export interface Oauth2Config {
   }
   scopes: string[]
   query?: Record<string, string>
+  tenant?: string
 }
 
 export type Oauth2WrappedConfig = Omit<Oauth2Config, "endpoint" | "name">
