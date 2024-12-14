@@ -61,9 +61,10 @@ export function MemoryStorage(input?: MemoryStorageOptions): StorageAdapter {
         joined,
         {
           value,
-          expiry: typeof expiry === 'number'
-            ? Date.now() + expiry * 1000
-            : expiry?.getTime(),
+          expiry:
+            typeof expiry === "number"
+              ? Date.now() + expiry * 1000
+              : expiry?.getTime(),
         },
       ] as (typeof store)[number]
       if (!match.found) {
