@@ -65,16 +65,16 @@ export function DynamoStorage(options: DynamoStorageOptions) {
       return JSON.parse(result.Item.value.S)
     },
 
-    async set(key: string[], value: any, ttl) {
+    async set(key: string[], value: any, expiry?: Date) {
       const parsed = parseKey(key)
       const params = {
         TableName: tableName,
         Item: {
           [pk]: { S: parsed.pk },
           [sk]: { S: parsed.sk },
-          ...(ttl
+          ...(expiry
             ? {
-                expiry: { N: (Math.floor(Date.now() / 1000) + ttl).toString() },
+                expiry: { N: Math.floor(expiry.getTime() / 1000).toString() },
               }
             : {}),
           value: { S: JSON.stringify(value) },

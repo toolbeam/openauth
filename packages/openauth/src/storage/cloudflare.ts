@@ -14,9 +14,9 @@ export function CloudflareStorage(
       return value as Record<string, any>
     },
 
-    async set(key: string[], value: any, ttl?: number) {
+    async set(key: string[], value: any, expiry?: Date) {
       await options.namespace.put(joinKey(key), JSON.stringify(value), {
-        expirationTtl: ttl,
+        expirationTtl: expiry ? Math.floor((expiry.getTime() - Date.now()) / 1000) : undefined,
       })
     },
 

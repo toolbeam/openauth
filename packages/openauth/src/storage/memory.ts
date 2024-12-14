@@ -54,14 +54,14 @@ export function MemoryStorage(input?: MemoryStorageOptions): StorageAdapter {
       }
       return
     },
-    async set(key: string[], value: any, ttl?: number) {
+    async set(key: string[], value: any, expiry?: Date) {
       const joined = joinKey(key)
       const match = search(joined)
       const entry = [
         joined,
         {
           value,
-          expiry: ttl ? Date.now() + ttl * 1000 : undefined,
+          expiry: expiry?.getTime(),
         },
       ] as (typeof store)[number]
       if (!match.found) {

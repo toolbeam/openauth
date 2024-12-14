@@ -1,7 +1,7 @@
 export interface StorageAdapter {
   get(key: string[]): Promise<Record<string, any> | undefined>
   remove(key: string[]): Promise<void>
-  set(key: string[], value: any, ttl?: number): Promise<void>
+  set(key: string[], value: any, expiry?: Date): Promise<void>
   scan(prefix: string[]): AsyncIterable<[string[], any]>
 }
 
@@ -29,7 +29,8 @@ export namespace Storage {
     value: any,
     ttl?: number,
   ) {
-    return adapter.set(encode(key), value, ttl)
+    const expiry = ttl ? new Date(Date.now() + ttl * 1000) : undefined
+    return adapter.set(encode(key), value, expiry)
   }
 
   export function remove(adapter: StorageAdapter, key: string[]) {
