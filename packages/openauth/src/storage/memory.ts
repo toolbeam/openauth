@@ -57,11 +57,12 @@ export function MemoryStorage(input?: MemoryStorageOptions): StorageAdapter {
       const joined = joinKey(key)
       const match = search(joined)
       // Handle both Date objects and TTL numbers while maintaining Date type in signature
-      const expiryTime = expiry instanceof Date
-        ? expiry.getTime()
-        : (expiry as number) !== undefined
-          ? Date.now() + (expiry as number) * 1000
-          : undefined
+      const expiryTime =
+        expiry instanceof Date
+          ? expiry.getTime()
+          : (expiry as number) !== undefined
+            ? Date.now() + (expiry as number) * 1000
+            : undefined
       const entry = [
         joined,
         {
