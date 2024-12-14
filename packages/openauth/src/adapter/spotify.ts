@@ -8,11 +8,5 @@ export function SpotifyAdapter(config: Oauth2WrappedConfig) {
       authorization: "https://accounts.spotify.com/authorize",
       token: "https://accounts.spotify.com/api/token",
     },
-    scopes: [
-      "user-read-private",
-      "user-read-email",
-      "playlist-read-private",
-      "user-library-read",
-    ],
   })
 }
