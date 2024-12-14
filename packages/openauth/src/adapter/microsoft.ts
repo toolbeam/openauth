@@ -1,8 +1,11 @@
 import { Oauth2Adapter, Oauth2WrappedConfig } from "./oauth2.js"
 import { OidcAdapter, OidcWrappedConfig } from "./oidc.js"
 
-export function MicrosoftAdapter(config: Oauth2WrappedConfig) {
+export interface MicrosoftConfig extends Oauth2WrappedConfig {
+  tenant: string
+}
 
+export function MicrosoftAdapter(config: MicrosoftConfig) {
   return Oauth2Adapter({
     ...config,
     type: "microsoft",
