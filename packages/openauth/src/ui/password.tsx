@@ -74,7 +74,7 @@ export function PasswordUI(input: PasswordUIOptions) {
               required
               type="password"
               name="password"
-              placeholder={copy.register_prompt}
+              placeholder={copy.input_password}
               autoComplete="current-password"
             />
             <button data-component="button">{copy.button_continue}</button>
