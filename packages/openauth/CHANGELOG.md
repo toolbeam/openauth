@@ -1,5 +1,11 @@
 # @openauthjs/openauth
 
+## 0.2.2
+
+### Patch Changes
+
+- 6da8647: fix copy for code resend
+
 ## 0.2.1
 
 ### Patch Changes
