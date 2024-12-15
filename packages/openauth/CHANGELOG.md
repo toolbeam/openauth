@@ -1,5 +1,11 @@
 # @openauthjs/openauth
 
+## 0.2.3
+
+### Patch Changes
+
+- 80238de: return aud field when verifying token
+
 ## 0.2.2
 
 ### Patch Changes

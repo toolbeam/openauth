@@ -1,5 +1,12 @@
 # nextjs
 
+## 0.1.5
+
+### Patch Changes
+
+- Updated dependencies [80238de]
+  - @openauthjs/openauth@0.2.3
+
 ## 0.1.4
 
 ### Patch Changes
