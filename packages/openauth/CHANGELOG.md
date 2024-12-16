@@ -1,5 +1,11 @@
 # @openauthjs/openauth
 
+## 0.2.4
+
+### Patch Changes
+
+- 8b5f490: feat: Add copy customization to Code UI component
+
 ## 0.2.3
 
 ### Patch Changes
