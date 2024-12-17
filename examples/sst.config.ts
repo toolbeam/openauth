@@ -27,6 +27,14 @@ export default $config({
       },
     })
 
+    // sst v3.3.65 or later
+    // the auth component creates a table for you and links it to the authorizer function automatically
+    const lambdaAuthLatest = new sst.aws.Auth("Auth", {
+      authorizer: {
+        handler: "./src/lambda/authorizer.handler",
+      },
+    });
+
     // lambda
     const table = new sst.aws.Dynamo("LambdaAuthTable", {
       fields: {
