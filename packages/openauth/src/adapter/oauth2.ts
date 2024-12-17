@@ -88,10 +88,7 @@ export function Oauth2Adapter(config: Oauth2Config) {
         }
 
         if (error)
-          throw new OauthError(
-            error.toString() as any,
-            errorDescription
-          )
+          throw new OauthError(error.toString() as any, errorDescription)
         if (!adapter || !code || (adapter.state && state !== adapter.state))
           return c.redirect(getRelativeUrl(c, "./authorize"))
 
