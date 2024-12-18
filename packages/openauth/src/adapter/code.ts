@@ -1,5 +1,6 @@
 import { Context } from "hono"
 import { Adapter } from "./adapter.js"
+import { generateUnbiasedDigits, timingSafeCompare } from "../random.js"
 
 export type CodeAdapterState =
   | {
@@ -36,11 +37,7 @@ export function CodeAdapter<
 }) {
   const length = config.length || 6
   function generate() {
-    const buffer = crypto.getRandomValues(new Uint8Array(length))
-    const otp = Array.from(buffer)
-      .map((byte) => byte % 10)
-      .join("")
-    return otp
+    return generateUnbiasedDigits(length)
   }
 
   return {
@@ -95,7 +92,7 @@ export function CodeAdapter<
         ) {
           const fd = await c.req.formData()
           const compare = fd.get("code")?.toString()
-          if (!state.code || !compare || state.code !== compare) {
+          if (!state.code || !compare || !timingSafeCompare(state.code, compare)) {
             return transition(
               c,
               {
