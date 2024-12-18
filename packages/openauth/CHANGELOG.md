@@ -1,5 +1,12 @@
 # @openauthjs/openauth
 
+## 0.2.5
+
+### Patch Changes
+
+- 8d6a243: fix: eliminate OTP bias and timing attack vulnerability
+- 873d1af: support specifying granular ttl for access/refresh token
+
 ## 0.2.4
 
 ### Patch Changes
