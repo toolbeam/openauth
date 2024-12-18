@@ -1,6 +1,7 @@
 import { UnknownStateError } from "../error.js"
 import { Storage } from "../storage/storage.js"
 import { Adapter } from "./adapter.js"
+import { generateUnbiasedDigits, timingSafeCompare } from "../random.js"
 
 export interface PasswordHasher<T> {
   hash(password: string): Promise<T>
@@ -100,11 +101,7 @@ export type PasswordLoginError =
 export function PasswordAdapter(config: PasswordConfig) {
   const hasher = config.hasher ?? ScryptHasher()
   function generate() {
-    const buffer = crypto.getRandomValues(new Uint8Array(6))
-    const otp = Array.from(buffer)
-      .map((byte) => byte % 10)
-      .join("")
-    return otp
+    return generateUnbiasedDigits(6)
   }
   return {
     type: "password",
@@ -193,7 +190,7 @@ export function PasswordAdapter(config: PasswordConfig) {
 
         if (action === "verify" && adapter.type === "code") {
           const code = fd.get("code")?.toString()
-          if (!code || code !== adapter.code)
+          if (!code || !timingSafeCompare(code, adapter.code))
             return transition(adapter, { type: "invalid_code" })
           const existing = await Storage.get(ctx.storage, [
             "email",
@@ -261,7 +258,7 @@ export function PasswordAdapter(config: PasswordConfig) {
 
         if (action === "verify" && adapter.type === "code") {
           const code = fd.get("code")?.toString()
-          if (!code || code !== adapter.code)
+          if (!code || !timingSafeCompare(code, adapter.code))
             return transition(adapter, { type: "invalid_code" })
           return transition({
             type: "update",
