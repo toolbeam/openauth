@@ -11,6 +11,7 @@
     "release": "bun run --filter=\"@openauthjs/openauth\" build && changeset publish"
   },
   "devDependencies": {
+    "@tsconfig/node20": "20.1.4",
     "@types/bun": "latest"
   },
   "dependencies": {
