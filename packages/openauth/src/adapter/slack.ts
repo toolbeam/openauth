@@ -11,7 +11,7 @@ import { Oauth2Adapter, Oauth2WrappedConfig } from "./oauth2.js"
  *
  * @see {@link https://api.slack.com/authentication/sign-in-with-slack}
  */
-type Scopes = "openid" | "email" | "profile"
+type Scope = "openid" | "email" | "profile"
 
 /**
  * @interface SlackConfig
@@ -28,7 +28,7 @@ export interface SlackConfig extends Oauth2WrappedConfig {
   // NOTE: We overrode the scopes to be constrained to the Slack scopes. Scopes will be
   // redundant with different providers, we may want to create a larger union type
   // and use Pick or Omit to constrain the scopes.
-  scopes: Scopes[]
+  scopes: Scope[]
 }
 
 /**
