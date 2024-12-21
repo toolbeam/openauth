@@ -27,7 +27,7 @@ export interface SlackConfig extends Oauth2WrappedConfig {
   team: string
   // NOTE: We overrode the scopes to be constrained to the Slack scopes. Scopes will be
   // redundant with different providers, we may want to create a larger union type
-  // and use Pick or Omit to constrain the scopes.
+  // and use `Extract` or `Exclude` to constrain the scopes.
   scopes: Scope[]
 }
 
