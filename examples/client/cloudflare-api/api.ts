@@ -43,7 +43,7 @@ export default {
         }
       case "/authorize":
         const { state } = await client.authorize(redirectURI, "code")
-        await env.AuthKV.put(`oauth:challenge ${state}`, "challenge", {
+        await env.AuthKV.put(`oauth:challenge ${state}`, "1", {
           expirationTtl: 60, // in seconds
         })
         return Response.redirect(url, 302)
