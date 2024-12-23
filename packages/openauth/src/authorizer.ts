@@ -1,7 +1,7 @@
 import { Adapter, AdapterOptions } from "./adapter/adapter.js"
 import { SubjectPayload, SubjectSchema } from "./session.js"
 import { Hono } from "hono/tiny"
-import { handle as awsHandle } from "hono/aws-lambda"
+// import { handle as awsHandle } from "hono/aws-lambda"
 import { Context } from "hono"
 import { deleteCookie, getCookie, setCookie } from "hono/cookie"
 
@@ -57,7 +57,7 @@ import { MemoryStorage } from "./storage/memory.js"
 import { cors } from "hono/cors"
 
 /** @internal */
-export const aws = awsHandle
+// export const aws = awsHandle
 
 export interface AuthorizerInput<
   Providers extends Record<string, Adapter<any>>,

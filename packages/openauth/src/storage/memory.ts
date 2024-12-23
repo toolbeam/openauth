@@ -1,6 +1,14 @@
 import { joinKey, splitKey, StorageAdapter } from "./storage.js"
-import { existsSync, readFileSync } from "fs"
-import { writeFile } from "fs/promises"
+
+let fs: any
+let fsPromises: any
+try {
+  fs = require("fs")
+  fsPromises = require("fs/promises")
+} catch (e) {
+  fs = null
+  fsPromises = null
+}
 
 export interface MemoryStorageOptions {
   persist?: string
@@ -12,8 +20,11 @@ export function MemoryStorage(input?: MemoryStorageOptions): StorageAdapter {
   ][]
 
   if (input?.persist) {
-    if (existsSync(input.persist)) {
-      const file = readFileSync(input?.persist)
+    if (!fs) {
+      throw new Error("fs is not available")
+    }
+    if (fs.existsSync(input.persist)) {
+      const file = fs.readFileSync(input?.persist)
       store.push(...JSON.parse(file.toString()))
     }
   }
@@ -21,7 +32,10 @@ export function MemoryStorage(input?: MemoryStorageOptions): StorageAdapter {
   async function save() {
     if (!input?.persist) return
     const file = JSON.stringify(store)
-    await writeFile(input.persist, file)
+    if (!fsPromises) {
+      throw new Error("fsPromises is not available")
+    }
+    await fsPromises.writeFile(input.persist, file)
   }
 
   function search(key: string) {
