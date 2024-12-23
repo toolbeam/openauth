@@ -60,13 +60,6 @@ export function CodeUI(props: {
                 pattern={inputPattern ?? undefined}
                 title={inputTitle ?? undefined}
                 inputmode={inputType === "tel" ? "numeric" : "email"}
-                autocomplete={
-                  inputType === "email"
-                    ? "email"
-                    : inputType === "tel"
-                      ? "tel"
-                      : "off"
-                }
                 required
                 placeholder={copy.email_placeholder}
               />
@@ -107,6 +100,8 @@ export function CodeUI(props: {
                 type="text"
                 name="code"
                 required
+                inputmode="numeric"
+                autocomplete="one-time-code"
                 placeholder={copy.code_placeholder}
               />
               <button data-component="button">{copy.button_continue}</button>
