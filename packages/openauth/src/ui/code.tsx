@@ -20,25 +20,17 @@ const DEFAULT_COPY = {
 
 export type CodeUICopy = typeof DEFAULT_COPY
 
-export type CodeUIInputOptions = Partial<{
-  inputType: "email" | "text" | "tel"
-  inputName: string
-  inputPattern: string
-  inputTitle: string
-}>
-
 export function CodeUI(props: {
   sendCode: (claims: Record<string, string>, code: string) => Promise<void>
   copy?: Partial<CodeUICopy>
-  inputOptions?: CodeUIInputOptions
+  mode?: "email" | "phone"
 }) {
   const copy = {
     ...DEFAULT_COPY,
     ...props.copy,
   }
 
-  const { inputName, inputPattern, inputTitle, inputType } =
-    props.inputOptions ?? {}
+  const mode = props.mode ?? "email"
 
   return {
     sendCode: props.sendCode,
@@ -55,11 +47,9 @@ export function CodeUI(props: {
               <input
                 data-component="input"
                 autofocus
-                type={inputType ?? "email"}
-                name={inputName ?? "email"}
-                pattern={inputPattern ?? undefined}
-                title={inputTitle ?? undefined}
-                inputmode={inputType === "tel" ? "numeric" : "email"}
+                type={mode === "email" ? "email" : "tel"}
+                name={mode === "email" ? "email" : "phone"}
+                inputmode={mode === "email" ? "email" : "numeric"}
                 required
                 placeholder={copy.email_placeholder}
               />
