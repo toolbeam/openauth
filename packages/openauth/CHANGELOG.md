@@ -1,5 +1,14 @@
 # @openauthjs/openauth
 
+## 0.2.6
+
+### Patch Changes
+
+- ca0df5d: ui: support phone mode for code ui
+- d8d1580: Add slack adapter to the list of available adapters.
+- ce44ed6: fix for password adapter not redirecting to the right place after change password flow
+- 4940bef: fix: add `node:` prefix for built-in modules
+
 ## 0.2.5
 
 ### Patch Changes
