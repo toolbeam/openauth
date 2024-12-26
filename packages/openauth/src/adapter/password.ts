@@ -214,12 +214,7 @@ export function PasswordAdapter(config: PasswordConfig) {
 
       routes.get("/change", async (c) => {
         let redirect =
-          c.req.query("redirect_uri") ||
-          c.req.url.replace(/change.*/, "authorize")
-        const fowardedHost = c.req.header("x-forwarded-host")
-        if (redirect.includes(".lambda-url.") && fowardedHost) {
-          redirect = `https://${fowardedHost}/password/authorize`
-        }
+          c.req.query("redirect_uri") || getRelativeUrl(c, "./authorize")
         const state: PasswordChangeState = {
           type: "start",
           redirect,
@@ -372,6 +367,7 @@ export function PBKDF2Hasher(opts?: { interations?: number }): PasswordHasher<{
   }
 }
 import { timingSafeEqual, randomBytes, scrypt } from "node:crypto"
+import { getRelativeUrl } from "../util.js"
 
 export function ScryptHasher(opts?: {
   N?: number
