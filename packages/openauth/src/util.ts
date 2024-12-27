@@ -1,4 +1,4 @@
-import { Context } from "hono"
+import type { Context } from "hono"
 
 export type Prettify<T> = {
   [K in keyof T]: T[K]
