@@ -5,7 +5,7 @@ import { Oauth2Adapter, Oauth2WrappedConfig } from "./oauth2.js"
  *
  * A descriptor lacking the scopes element is implicitly assumed to require all scopes and as a result, Bitbucket will require end users authorizing/installing the add-on to explicitly accept all scopes.
  *
- * @see {@link https://developer.atlassian.com/cloud/bitbucket/rest/intro/#authentication}
+ * @see {@link https://developer.atlassian.com/cloud/bitbucket/rest/intro/#bitbucket-oauth-2-0-scopes}
  */
 type Scope =
   | "project"
