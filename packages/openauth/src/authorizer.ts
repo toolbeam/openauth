@@ -23,7 +23,7 @@ export interface OnSuccessResponder<
   ): Promise<Response>
 }
 
-interface AuthorizationState {
+export interface AuthorizationState {
   redirect_uri: string
   response_type: string
   state: string
