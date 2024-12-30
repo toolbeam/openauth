@@ -33,6 +33,11 @@ export interface DynamoStorageOptions {
    * The sort key column name.
    */
   sk?: string
+  /**
+   * Endpoint URL for the DynamoDB service. Useful for local testing.
+   * @default "https://dynamodb.{region}.amazonaws.com"
+   */
+  endpoint?: string
 }
 
 /**
@@ -60,8 +65,9 @@ export function DynamoStorage(options: DynamoStorageOptions): StorageAdapter {
 
   async function dynamo(action: string, payload: any) {
     const client = await c
+    const endpoint = options.endpoint || `https://dynamodb.${client.region}.amazonaws.com`
     const response = await client.fetch(
-      `https://dynamodb.${client.region}.amazonaws.com`,
+      endpoint,
       {
         method: "POST",
         headers: {
