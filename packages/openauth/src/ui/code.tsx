@@ -5,9 +5,9 @@ import { UnknownStateError } from "../error.js"
 import { Layout } from "./base.js"
 import { FormAlert } from "./form.js"
 
-const DEFAULT_COPY = {
-  email_placeholder: "Email",
-  email_invalid: "Email address is not valid",
+const DEFAULT_COPY_EMAIL = {
+  claim_placeholder: "Email",
+  claim_invalid: "Email address is not valid",
   button_continue: "Continue",
   code_info: "We'll send a pin code to your email",
   code_placeholder: "Code",
@@ -18,13 +18,29 @@ const DEFAULT_COPY = {
   code_resend: "Resend",
 }
 
-export type CodeUICopy = typeof DEFAULT_COPY
+const DEFAULT_COPY_PHONE = {
+  claim_placeholder: "Phone number",
+  claim_invalid: "Phone number address is not valid",
+  button_continue: "Continue",
+  code_info: "We'll send a pin code to your phone number",
+  code_placeholder: "Code",
+  code_invalid: "Invalid code",
+  code_sent: "Code sent to ",
+  code_resent: "Code resent to ",
+  code_didnt_get: "Didn't get code?",
+  code_resend: "Resend",
+}
+
+export type CodeUICopy = typeof DEFAULT_COPY_EMAIL
 
 export function CodeUI(props: {
   sendCode: (claims: Record<string, string>, code: string) => Promise<void>
   copy?: Partial<CodeUICopy>
   mode?: "email" | "phone"
 }) {
+
+  const DEFAULT_COPY = props.mode === 'email' ? DEFAULT_COPY_EMAIL : DEFAULT_COPY_PHONE
+
   const copy = {
     ...DEFAULT_COPY,
     ...props.copy,
@@ -41,7 +57,7 @@ export function CodeUI(props: {
           <Layout>
             <form data-component="form" method="post">
               {error?.type === "invalid_claim" && (
-                <FormAlert message={copy.email_invalid} />
+                <FormAlert message={copy.claim_invalid} />
               )}
               <input type="hidden" name="action" value="request" />
               <input
@@ -51,7 +67,7 @@ export function CodeUI(props: {
                 name={mode === "email" ? "email" : "phone"}
                 inputmode={mode === "email" ? "email" : "numeric"}
                 required
-                placeholder={copy.email_placeholder}
+                placeholder={copy.claim_placeholder}
               />
               <button data-component="button">{copy.button_continue}</button>
             </form>
