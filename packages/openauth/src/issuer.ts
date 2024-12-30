@@ -78,6 +78,8 @@ export interface IssuerInput<
   ttl?: {
     access?: number
     refresh?: number
+    refreshLeeway?: number
+    refreshRetention?: number
   }
   select?(providers: Record<string, string>, req: Request): Promise<Response>
   start?(req: Request): Promise<void>
@@ -125,6 +127,8 @@ export function issuer<
     }
   const ttlAccess = input.ttl?.access ?? 60 * 60 * 24 * 30
   const ttlRefresh = input.ttl?.refresh ?? 60 * 60 * 24 * 365
+  const ttlRefreshLeeway = input.ttl?.refreshLeeway ?? 60
+  const ttlRefreshRetention = input.ttl?.refreshRetention ?? 0
   if (input.theme) {
     setTheme(input.theme)
   }
@@ -312,17 +316,27 @@ export function issuer<
         access: number
         refresh: number
       }
+      usedAt?: number
+      nextToken?: string
     },
+    opts?: {
+      generateRefreshToken?: boolean
+    }
   ) {
-    const refreshToken = crypto.randomUUID()
-    await Storage.set(
-      storage!,
-      ["oauth:refresh", value.subject, refreshToken],
-      {
+    const refreshToken = value.nextToken ?? crypto.randomUUID()
+    if (opts?.generateRefreshToken ?? true) {
+      const refreshValue = {
         ...value,
-      },
-      value.ttl.refresh,
-    )
+        nextToken: crypto.randomUUID(),
+      }
+      delete refreshValue.usedAt
+      await Storage.set(
+        storage!,
+        ["oauth:refresh", value.subject, refreshToken],
+        refreshValue,
+        value.ttl.refresh,
+      )
+    }
     return {
       access: await new SignJWT({
         mode: "access",
@@ -332,7 +346,9 @@ export function issuer<
         iss: issuer(ctx),
         sub: value.subject,
       })
-        .setExpirationTime(Date.now() / 1000 + value.ttl.access)
+        .setExpirationTime(
+          Math.floor((value.usedAt ?? Date.now()) / 1000 + value.ttl.access),
+        )
         .setProtectedHeader(
           await signingKey.then((k) => ({
             alg: k.alg,
@@ -526,6 +542,8 @@ export function issuer<
             access: number
             refresh: number
           }
+          nextToken: string
+          usedAt?: number
         }>(storage, key)
         if (!payload) {
           return c.json(
@@ -536,8 +554,27 @@ export function issuer<
             400,
           )
         }
-        await Storage.remove(storage, key)
-        const tokens = await generateTokens(c, payload)
+        const generateRefreshToken = !payload.usedAt
+        if (!payload.usedAt) {
+          payload.usedAt = Date.now()
+          await Storage.set(
+            storage,
+            key,
+            payload,
+            ttlRefreshLeeway + ttlRefreshRetention,
+          )
+        } else if (Date.now() > payload.usedAt + ttlRefreshLeeway * 1000) {
+          // token was reused past its grace period
+          await auth.invalidate(subject)
+          return c.json(
+            {
+              error: "invalid_grant",
+              error_description: "Refresh token has been used or expired",
+            },
+            400,
+          )
+        }
+        const tokens = await generateTokens(c, payload, { generateRefreshToken })
         return c.json({
           access_token: tokens.access,
           refresh_token: tokens.refresh,
