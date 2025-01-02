@@ -1,5 +1,22 @@
 # @openauthjs/openauth
 
+## 0.2.7
+
+### Patch Changes
+
+- 3004802: refactor: export `AuthorizationState` for better reusability
+- 2975608: switching signing key algorithm to es256. generate seperate keys for symmetrical encryption. old keys will automatically be marked expired and not used
+- c92604b: Adds support for a custom DynamoDB endpoint which enables use of a amazon/dynamodb-local container.
+
+  Usabe example:
+
+  ```ts
+    storage: DynamoStorage({
+      table: 'openauth-users',
+      endpoint: 'http://localhost:8000',
+    }),
+  ```
+
 ## 0.2.6
 
 ### Patch Changes
