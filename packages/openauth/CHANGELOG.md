@@ -1,5 +1,11 @@
 # @openauthjs/openauth
 
+## 0.3.2
+
+### Patch Changes
+
+- 03da3e0: fix issue with oidc adapter
+
 ## 0.3.1
 
 ### Patch Changes
