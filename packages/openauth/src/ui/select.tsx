@@ -55,7 +55,8 @@ export interface SelectProps {
        */
       display?: string
     }
-  >
+  >,
+  basePath?: string
 }
 
 export function Select(props?: SelectProps) {
@@ -63,6 +64,7 @@ export function Select(props?: SelectProps) {
     providers: Record<string, string>,
     _req: Request,
   ): Promise<Response> => {
+    const basePath = props?.basePath || ""
     const jsx = (
       <Layout>
         <div data-component="form">
@@ -72,7 +74,7 @@ export function Select(props?: SelectProps) {
             const icon = ICON[key]
             return (
               <a
-                href={`/${key}/authorize`}
+                href={`${basePath}/${key}/authorize`}
                 data-component="button"
                 data-color="ghost"
               >
