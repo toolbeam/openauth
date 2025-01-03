@@ -55,6 +55,7 @@ import { isDomainMatch } from "./util.js"
 import { DynamoStorage } from "./storage/dynamo.js"
 import { MemoryStorage } from "./storage/memory.js"
 import { cors } from "hono/cors"
+import { ServerOptions } from "./server.js"
 
 /** @internal */
 export const aws = awsHandle
@@ -94,6 +95,7 @@ export interface AuthorizerInput<
     },
     req: Request,
   ): Promise<boolean>
+  serverOptions?: ServerOptions
 }
 
 /**
@@ -353,14 +355,14 @@ export function authorizer<
   function issuer(ctx: Context) {
     const url = new URL(ctx.req.url)
     const host = ctx.req.header("x-forwarded-host") ?? url.host
-    return url.protocol + "//" + host
+    return url.protocol + "//" + host + input.serverOptions?.basePath
   }
 
   const app = new Hono<{
     Variables: {
       authorization: AuthorizationState
     }
-  }>()
+  }>().basePath(input.serverOptions?.basePath || "/")
 
   for (const [name, value] of Object.entries(input.providers)) {
     const route = new Hono<any>()
