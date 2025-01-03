@@ -1,5 +1,11 @@
 # @openauthjs/openauth
 
+## 0.3.1
+
+### Patch Changes
+
+- 8764ed4: support specify custom subject
+
 ## 0.3.0
 
 ### Minor Changes
