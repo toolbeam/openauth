@@ -55,6 +55,7 @@ import { isDomainMatch } from "./util.js"
 import { DynamoStorage } from "./storage/dynamo.js"
 import { MemoryStorage } from "./storage/memory.js"
 import { cors } from "hono/cors"
+import { ServerOptions } from "./server.js"
 
 /** @internal */
 export const aws = awsHandle
@@ -94,6 +95,7 @@ export interface AuthorizerInput<
     },
     req: Request,
   ): Promise<boolean>
+  serverOptions?: ServerOptions
 }
 
 /**
@@ -128,7 +130,9 @@ export function authorizer<
     setTheme(input.theme)
   }
 
-  const select = input.select ?? Select()
+  const select = input.select ?? Select({
+    basePath: input.serverOptions?.basePath,
+  })
   const allow =
     input.allow ??
     (async (input, req) => {
@@ -353,14 +357,14 @@ export function authorizer<
   function issuer(ctx: Context) {
     const url = new URL(ctx.req.url)
     const host = ctx.req.header("x-forwarded-host") ?? url.host
-    return url.protocol + "//" + host
+    return url.protocol + "//" + host + input.serverOptions?.basePath
   }
 
   const app = new Hono<{
     Variables: {
       authorization: AuthorizationState
     }
-  }>()
+  }>().basePath(input.serverOptions?.basePath || "/")
 
   for (const [name, value] of Object.entries(input.providers)) {
     const route = new Hono<any>()
@@ -590,6 +594,7 @@ export function authorizer<
   )
 
   app.get("/authorize", async (c) => {
+    const iss = issuer(c)
     const provider = c.req.query("provider")
     const response_type = c.req.query("response_type")
     const redirect_uri = c.req.query("redirect_uri")
@@ -607,9 +612,9 @@ export function authorizer<
       pkce:
         code_challenge && code_challenge_method
           ? {
-              challenge: code_challenge,
-              method: code_challenge_method,
-            }
+            challenge: code_challenge,
+            method: code_challenge_method,
+          }
           : undefined,
     } as AuthorizationState
     c.set("authorization", authorization)
@@ -642,9 +647,9 @@ export function authorizer<
     )
       throw new UnauthorizedClientError(client_id, redirect_uri)
     await auth.set(c, "authorization", 60 * 60 * 24, authorization)
-    if (provider) return c.redirect(`/${provider}/authorize`)
+    if (provider) return c.redirect(iss + `/${provider}/authorize`)
     const providers = Object.keys(input.providers)
-    if (providers.length === 1) return c.redirect(`/${providers[0]}/authorize`)
+    if (providers.length === 1) return c.redirect(iss + `/${providers[0]}/authorize`)
     return auth.forward(
       c,
       await select(
