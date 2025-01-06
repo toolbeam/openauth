@@ -1,7 +1,6 @@
 import { Provider, ProviderOptions } from "./provider/provider.js"
 import { SubjectPayload, SubjectSchema } from "./subject.js"
 import { Hono } from "hono/tiny"
-import { handle as awsHandle } from "hono/aws-lambda"
 import { Context } from "hono"
 import { deleteCookie, getCookie, setCookie } from "hono/cookie"
 
@@ -53,12 +52,7 @@ import { validatePKCE } from "./pkce.js"
 import { Select } from "./ui/select.js"
 import { setTheme, Theme } from "./ui/theme.js"
 import { isDomainMatch } from "./util.js"
-import { DynamoStorage } from "./storage/dynamo.js"
-import { MemoryStorage } from "./storage/memory.js"
 import { cors } from "hono/cors"
-
-/** @internal */
-export const aws = awsHandle
 
 export interface IssuerInput<
   Providers extends Record<string, Provider<any>>,
@@ -72,7 +66,7 @@ export interface IssuerInput<
   }[keyof Providers],
 > {
   subjects: Subjects
-  storage?: StorageAdapter
+  storage: StorageAdapter
   providers: Providers
   theme?: Theme
   ttl?: {
@@ -145,20 +139,7 @@ export function issuer<
       return isDomainMatch(redir, host)
     })
 
-  let storage = input.storage
-  if (process.env.OPENAUTH_STORAGE) {
-    const parsed = JSON.parse(process.env.OPENAUTH_STORAGE)
-    if (parsed.type === "dynamo") storage = DynamoStorage(parsed.options)
-    if (parsed.type === "memory") storage = MemoryStorage()
-    if (parsed.type === "cloudflare")
-      throw new Error(
-        "Cloudflare storage cannot be configured through env because it requires bindings.",
-      )
-  }
-  if (!storage)
-    throw new Error(
-      "Store is not configured. Either set the `storage` option or set `OPENAUTH_STORAGE` environment variable.",
-    )
+  const storage = input.storage
   const allSigning = Promise.all([
     signingKeys(storage),
     legacySigningKeys(storage),
