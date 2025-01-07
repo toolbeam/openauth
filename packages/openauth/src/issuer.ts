@@ -325,6 +325,12 @@ export function issuer<
   ) {
     const refreshToken = value.nextToken ?? crypto.randomUUID()
     if (opts?.generateRefreshToken ?? true) {
+      /**
+       * Generate and store the next refresh token after the one we are currently returning.
+       * Reserving these in advance avoids concurrency issues with multiple refreshes.
+       * Similar treatment should be given to any other values that may have race conditions,
+       * for example if a jti claim was added to the access token.
+       */
       const refreshValue = {
         ...value,
         nextToken: crypto.randomUUID(),
@@ -555,7 +561,10 @@ export function issuer<
           )
         }
         const generateRefreshToken = !payload.usedAt
-        if (!payload.usedAt) {
+        if (ttlRefreshLeeway <= 0) {
+          // no leeway, remove the refresh token immediately
+          await Storage.remove(storage, key)
+        } else if (!payload.usedAt) {
           payload.usedAt = Date.now()
           await Storage.set(
             storage,
