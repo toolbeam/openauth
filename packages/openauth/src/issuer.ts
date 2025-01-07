@@ -268,10 +268,11 @@ export function issuer<
       deleteCookie(ctx, key)
     },
     async invalidate(subject: string) {
-      for await (const [key] of Storage.scan(this.storage, [
-        "oauth:refresh",
-        subject,
-      ])) {
+      // Resolve the scan in case modifications interfere with iteration
+      const keys = await Array.fromAsync(
+        Storage.scan(this.storage, ["oauth:refresh", subject]),
+      )
+      for (const [key] of keys) {
         await Storage.remove(this.storage, key)
       }
     },
