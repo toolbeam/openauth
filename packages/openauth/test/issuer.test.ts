@@ -20,13 +20,15 @@ const subjects = createSubjects({
 })
 
 let storage = MemoryStorage()
-const auth = issuer({
+const issuerConfig = {
   storage,
   subjects,
   allow: async () => true,
   ttl: {
     access: 60,
     refresh: 6000,
+    refreshLeeway: 60,
+    refreshRetention: 6000,
   },
   providers: {
     dummy: {
@@ -56,7 +58,8 @@ const auth = issuer({
     }
     throw new Error("Invalid provider: " + value.provider)
   },
-})
+}
+const auth = issuer(issuerConfig)
 
 const expectNonEmptyString = expect.stringMatching(/.+/)
 
@@ -157,24 +160,7 @@ describe("refresh token", () => {
   let tokens: { access: string; refresh: string }
   let client: ReturnType<typeof createClient>
 
-  const requestRefreshToken = async (refresh_token: string) =>
-    auth.request("https://auth.example.com/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        ...(refresh_token ? { refresh_token } : {}),
-      }).toString(),
-    })
-
-  beforeEach(async () => {
-    client = createClient({
-      issuer: "https://auth.example.com",
-      clientID: "123",
-      fetch: (a, b) => Promise.resolve(auth.request(a, b)),
-    })
+  const generateTokens = async (issuer: typeof auth) => {
     const { challenge, url } = await client.authorize(
       "https://client.example.com/callback",
       "code",
@@ -182,8 +168,8 @@ describe("refresh token", () => {
         pkce: true,
       },
     )
-    let response = await auth.request(url)
-    response = await auth.request(response.headers.get("location")!, {
+    let response = await issuer.request(url)
+    response = await issuer.request(response.headers.get("location")!, {
       headers: {
         cookie: response.headers.get("set-cookie")!,
       },
@@ -196,7 +182,35 @@ describe("refresh token", () => {
       challenge.verifier,
     )
     if (exchanged.err) throw exchanged.err
-    tokens = exchanged.tokens
+    return exchanged.tokens
+  }
+
+  const createClientAndTokens = async (issuer: typeof auth) => {
+    client = createClient({
+      issuer: "https://auth.example.com",
+      clientID: "123",
+      fetch: (a, b) => Promise.resolve(issuer.request(a, b)),
+    })
+    tokens = await generateTokens(issuer)
+  }
+
+  const requestRefreshToken = async (
+    refresh_token: string,
+    issuer?: typeof auth,
+  ) =>
+    (issuer ?? auth).request("https://auth.example.com/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        ...(refresh_token ? { refresh_token } : {}),
+      }).toString(),
+    })
+
+  beforeEach(async () => {
+    await createClientAndTokens(auth)
   })
 
   test("success", async () => {
@@ -249,19 +263,71 @@ describe("refresh token", () => {
     })
   })
 
-  test("expired failure", async () => {
-    setSystemTime(Date.now() + 1000 * 6000 + 1000)
+  test("multiple active tokens", async () => {
+    const tokens2 = await generateTokens(auth)
+
     let response = await requestRefreshToken(tokens.refresh)
+    expect(response.status).toBe(200)
+
+    response = await requestRefreshToken(tokens2.refresh)
+    expect(response.status).toBe(200)
+  })
+
+  test("reuse failure with leeway disabled", async () => {
+    const issuerWithoutLeeway = issuer({
+      ...issuerConfig,
+      ttl: {
+        ...issuerConfig.ttl,
+        refreshLeeway: 0,
+        refreshRetention: 0,
+      },
+    })
+    await createClientAndTokens(issuerWithoutLeeway)
+    let response = await requestRefreshToken(
+      tokens.refresh,
+      issuerWithoutLeeway,
+    )
+    expect(response.status).toBe(200)
+
+    response = await requestRefreshToken(tokens.refresh, issuerWithoutLeeway)
     expect(response.status).toBe(400)
     const reused = await response.json()
     expect(reused.error).toBe("invalid_grant")
   })
 
-  test("reuse failure", async () => {
+  test("reuse success with leeway enabled", async () => {
+    let response = await requestRefreshToken(tokens.refresh)
+    expect(response.status).toBe(200)
+    const refreshed = await response.json()
+    const [, refreshedAccessPayload] = refreshed.access_token.split(".")
+
+    setSystemTime(Date.now() + 1000 * 30)
+
+    response = await requestRefreshToken(tokens.refresh)
+    expect(response.status).toBe(200)
+    const reused = await response.json()
+    const [, reusedAccessPayload] = reused.access_token.split(".")
+    expect(refreshed.refresh_token).toEqual(reused.refresh_token)
+    /**
+     * Access token signature is different every time for ES256 alg,
+     * but the payload should be the same.
+     */
+    expect(refreshedAccessPayload).toEqual(reusedAccessPayload)
+  })
+
+  test("invalidated with reuse detection", async () => {
     let response = await requestRefreshToken(tokens.refresh)
     expect(response.status).toBe(200)
 
+    setSystemTime(Date.now() + 1000 * 60 + 1000)
+
     response = await requestRefreshToken(tokens.refresh)
+    expect(response.status).toBe(400)
+  })
+
+  test("expired failure", async () => {
+    setSystemTime(Date.now() + 1000 * 6000 + 1000)
+    let response = await requestRefreshToken(tokens.refresh)
     expect(response.status).toBe(400)
     const reused = await response.json()
     expect(reused.error).toBe("invalid_grant")
