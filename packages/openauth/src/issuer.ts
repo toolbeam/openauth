@@ -584,7 +584,9 @@ export function issuer<
             400,
           )
         }
-        const tokens = await generateTokens(c, payload, { generateRefreshToken })
+        const tokens = await generateTokens(c, payload, {
+          generateRefreshToken,
+        })
         return c.json({
           access_token: tokens.access,
           refresh_token: tokens.refresh,
