@@ -2,4 +2,4 @@
 "@openauthjs/openauth": patch
 ---
 
-Adds support for refresh token leeway and reuse detection
+Adds support for refresh token reuse interval and reuse detection

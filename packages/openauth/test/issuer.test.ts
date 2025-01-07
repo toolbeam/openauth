@@ -27,7 +27,7 @@ const issuerConfig = {
   ttl: {
     access: 60,
     refresh: 6000,
-    refreshLeeway: 60,
+    refreshReuse: 60,
     refreshRetention: 6000,
   },
   providers: {
@@ -273,29 +273,29 @@ describe("refresh token", () => {
     expect(response.status).toBe(200)
   })
 
-  test("reuse failure with leeway disabled", async () => {
-    const issuerWithoutLeeway = issuer({
+  test("failure with reuse interval disabled", async () => {
+    const issuerWithoutReuse = issuer({
       ...issuerConfig,
       ttl: {
         ...issuerConfig.ttl,
-        refreshLeeway: 0,
+        refreshReuse: 0,
         refreshRetention: 0,
       },
     })
-    await createClientAndTokens(issuerWithoutLeeway)
+    await createClientAndTokens(issuerWithoutReuse)
     let response = await requestRefreshToken(
       tokens.refresh,
-      issuerWithoutLeeway,
+      issuerWithoutReuse,
     )
     expect(response.status).toBe(200)
 
-    response = await requestRefreshToken(tokens.refresh, issuerWithoutLeeway)
+    response = await requestRefreshToken(tokens.refresh, issuerWithoutReuse)
     expect(response.status).toBe(400)
     const reused = await response.json()
     expect(reused.error).toBe("invalid_grant")
   })
 
-  test("reuse success with leeway enabled", async () => {
+  test("success with reuse interval enabled", async () => {
     let response = await requestRefreshToken(tokens.refresh)
     expect(response.status).toBe(200)
     const refreshed = await response.json()

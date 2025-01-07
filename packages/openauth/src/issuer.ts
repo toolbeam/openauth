@@ -76,9 +76,25 @@ export interface IssuerInput<
   providers: Providers
   theme?: Theme
   ttl?: {
+    /**
+     * Interval in seconds where the access token is valid. 
+     * @default 30d
+     */
     access?: number
+    /**
+     * Interval in seconds where the refresh token is valid. 
+     * @default 1y
+     */
     refresh?: number
-    refreshLeeway?: number
+    /**
+     * Interval in seconds where refresh token reuse is allowed.
+     * @default 60s
+     */
+    refreshReuse?: number
+    /**
+     * Interval in seconds to retain refresh tokens for reuse detection.
+     * @default 0s
+     */
     refreshRetention?: number
   }
   select?(providers: Record<string, string>, req: Request): Promise<Response>
@@ -127,7 +143,7 @@ export function issuer<
     }
   const ttlAccess = input.ttl?.access ?? 60 * 60 * 24 * 30
   const ttlRefresh = input.ttl?.refresh ?? 60 * 60 * 24 * 365
-  const ttlRefreshLeeway = input.ttl?.refreshLeeway ?? 60
+  const ttlRefreshReuse = input.ttl?.refreshReuse ?? 60
   const ttlRefreshRetention = input.ttl?.refreshRetention ?? 0
   if (input.theme) {
     setTheme(input.theme)
@@ -562,8 +578,8 @@ export function issuer<
           )
         }
         const generateRefreshToken = !payload.usedAt
-        if (ttlRefreshLeeway <= 0) {
-          // no leeway, remove the refresh token immediately
+        if (ttlRefreshReuse <= 0) {
+          // no reuse interval, remove the refresh token immediately
           await Storage.remove(storage, key)
         } else if (!payload.usedAt) {
           payload.usedAt = Date.now()
@@ -571,10 +587,10 @@ export function issuer<
             storage,
             key,
             payload,
-            ttlRefreshLeeway + ttlRefreshRetention,
+            ttlRefreshReuse + ttlRefreshRetention,
           )
-        } else if (Date.now() > payload.usedAt + ttlRefreshLeeway * 1000) {
-          // token was reused past its grace period
+        } else if (Date.now() > payload.usedAt + ttlRefreshReuse * 1000) {
+          // token was reused past the allowed interval
           await auth.invalidate(subject)
           return c.json(
             {
