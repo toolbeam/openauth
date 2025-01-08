@@ -709,28 +709,46 @@ export function issuer<
     app.route(`/${name}`, route)
   }
 
-  app.get("/.well-known/jwks.json", async (c) => {
-    const all = await allSigning
-    return c.json({
-      keys: all.map((item) => ({
-        ...item.jwk,
-        exp: item.expired
-          ? Math.floor(item.expired.getTime() / 1000)
-          : undefined,
-      })),
-    })
-  })
+  app.get(
+    "/.well-known/jwks.json",
+    cors({
+      origin: "*",
+      allowHeaders: ["*"],
+      allowMethods: ["GET"],
+      credentials: false,
+    }),
+    async (c) => {
+      const all = await allSigning
+      return c.json({
+        keys: all.map((item) => ({
+          ...item.jwk,
+          exp: item.expired
+            ? Math.floor(item.expired.getTime() / 1000)
+            : undefined,
+        })),
+      })
+    },
+  )
 
-  app.get("/.well-known/oauth-authorization-server", async (c) => {
-    const iss = issuer(c)
-    return c.json({
-      issuer: iss,
-      authorization_endpoint: `${iss}/authorize`,
-      token_endpoint: `${iss}/token`,
-      jwks_uri: `${iss}/.well-known/jwks.json`,
-      response_types_supported: ["code", "token"],
-    })
-  })
+  app.get(
+    "/.well-known/oauth-authorization-server",
+    cors({
+      origin: "*",
+      allowHeaders: ["*"],
+      allowMethods: ["GET"],
+      credentials: false,
+    }),
+    async (c) => {
+      const iss = issuer(c)
+      return c.json({
+        issuer: iss,
+        authorization_endpoint: `${iss}/authorize`,
+        token_endpoint: `${iss}/token`,
+        jwks_uri: `${iss}/.well-known/jwks.json`,
+        response_types_supported: ["code", "token"],
+      })
+    },
+  )
 
   app.post(
     "/token",
