@@ -39,6 +39,7 @@ export function Layout(
     >
       <head>
         <title>{theme?.title || "OpenAuthJS"}</title>
+        <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href={theme?.favicon} />
         <style dangerouslySetInnerHTML={{ __html: css }} />
