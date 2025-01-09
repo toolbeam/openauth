@@ -3,6 +3,7 @@ import * as fs from "fs"
 import * as TypeDoc from "typedoc"
 import config from "./config"
 
+let warnings = 0
 const OUTPUT_DIR = "src/content/docs/docs"
 type Text = string | Text[]
 
@@ -56,9 +57,19 @@ const FRONTMATTER: Record<
     description: "Reference doc for the Cloudflare KV storage adapter.",
     editUrl: `${config.github}/blob/master/packages/openauth/src/storage/cloudflare.ts`,
   },
+  issuer: {
+    title: "Issuer",
+    description: "Reference doc for the OpenAuth server.",
+    editUrl: `${config.github}/blob/master/packages/openauth/src/issuer.ts`,
+  },
+  subject: {
+    title: "Subject",
+    description: "Reference doc for creating subjects.",
+    editUrl: `${config.github}/blob/master/packages/openauth/src/subject.ts`,
+  },
   client: {
     title: "Client",
-    description: "Reference doc for the client SDK.",
+    description: "Reference doc for the OpenAuth client.",
     editUrl: `${config.github}/blob/master/packages/openauth/src/client.ts`,
   },
   apple: {
@@ -159,6 +170,7 @@ renderIssuer()
 providers.map(renderProvider)
 storages.map(renderStorage)
 uis.map(renderUI)
+printWarnings()
 
 function renderProvider(module: TypeDoc.DeclarationReflection) {
   console.debug(`renderProvider: ${module.name}`)
@@ -173,7 +185,7 @@ function renderProvider(module: TypeDoc.DeclarationReflection) {
       description: description || `A page for the ${name} provider.`,
     }),
     `<div class="tsdoc">`,
-    renderAbout(renderComment(module.comment)),
+    renderAbout(renderComment(module)),
     renderFunctions(module),
     renderInterfaces(module),
     `</div>`,
@@ -193,7 +205,7 @@ function renderStorage(module: TypeDoc.DeclarationReflection) {
       description: description || `A page for the ${name} storage.`,
     }),
     `<div class="tsdoc">`,
-    renderAbout(renderComment(module.comment)),
+    renderAbout(renderComment(module)),
     renderFunctions(module),
     renderInterfaces(module),
     `</div>`,
@@ -213,7 +225,7 @@ function renderUI(module: TypeDoc.DeclarationReflection) {
       description: description || `A page for the ${name} UI.`,
     }),
     `<div class="tsdoc">`,
-    renderAbout(renderComment(module.comment)),
+    renderAbout(renderComment(module)),
     renderVariables(module, { title: "Themes" }),
     renderFunctions(module),
     renderInterfaces(module),
@@ -226,15 +238,18 @@ function renderSubject() {
 
   const module = subject
   const name = module.name
+  const { title, editUrl, description } = FRONTMATTER[name] || {}
   saveFile(name, [
     renderHeader({
+      title,
+      editUrl,
+      description,
       moduleName: module.name,
-      editUrl: false,
-      title: name,
-      description: `A page for the subject.`,
     }),
     `<div class="tsdoc">`,
+    renderAbout(renderComment(module)),
     renderFunctions(module),
+    renderInterfaces(module),
     `</div>`,
   ])
 }
@@ -253,9 +268,15 @@ function renderClient() {
       description: description || `A page for the client.`,
     }),
     `<div class="tsdoc">`,
-    renderAbout(renderComment(module.comment)),
+    renderAbout(renderComment(module)),
     renderFunctions(module),
-    renderInterfaces(module),
+    renderInterfaces(module, {
+      filter: (i) => i.name === "Client",
+      depth: "h3",
+    }),
+    renderInterfaces(module, {
+      filter: (i) => i.name !== "Client",
+    }),
     `</div>`,
   ])
 }
@@ -265,18 +286,20 @@ function renderIssuer() {
 
   const errors = error.getChildrenByKind(TypeDoc.ReflectionKind.Class)
   const name = issuer.name
+  const { title, editUrl, description } = FRONTMATTER[name] || {}
   saveFile(name, [
     renderHeader({
+      title,
+      editUrl,
+      description,
       moduleName: issuer.name,
-      editUrl: false,
-      title: name,
-      description: `A page for the issuer.`,
     }),
     `<div class="tsdoc">`,
+    renderAbout(renderComment(issuer)),
     renderFunctions(issuer),
     renderInterfaces(issuer),
     "## Errors",
-    renderAbout(renderComment(error.comment)),
+    renderAbout(renderComment(error)),
     errors.map(renderClass),
     `</div>`,
   ])
@@ -303,6 +326,7 @@ function renderHeader(input: {
     `import Section from '${relativePath}/Section.astro';`,
     `import NestedTitle from '${relativePath}/NestedTitle.astro';`,
     `import InlineSection from '${relativePath}/InlineSection.astro';`,
+    `import { Tabs, TabItem } from '@astrojs/starlight/components';`,
     "",
   ]
 }
@@ -314,7 +338,7 @@ function renderAbout(content: Text) {
 
 function renderClass(c: TypeDoc.DeclarationReflection) {
   console.debug(`   ∟class: ${c.name}`)
-  return [`### ${c.name}`, `<Segment>`, renderComment(c.comment), `</Segment>`]
+  return [`### ${c.name}`, `<Segment>`, renderComment(c), `</Segment>`]
 }
 
 function renderVariables(
@@ -329,12 +353,7 @@ function renderVariables(
     `## ${options.title}`,
     variables.map((v) => {
       console.debug(`   ∟variable: ${v.name}`)
-      return [
-        `### ${v.name}`,
-        `<Segment>`,
-        renderComment(v.comment),
-        `</Segment>`,
-      ]
+      return [`### ${v.name}`, `<Segment>`, renderComment(v), `</Segment>`]
     }),
   ])
 }
@@ -358,7 +377,7 @@ function renderFunctions(module: TypeDoc.DeclarationReflection) {
           f.signatures![0].parameters!.map((p) => {
             return [
               `- <p><code class="key">${renderParameter(p)}</code> ${renderType(p.type!)}</p>`,
-              renderComment(p.comment),
+              renderComment(p),
             ]
           }),
           `</Section>`,
@@ -366,19 +385,28 @@ function renderFunctions(module: TypeDoc.DeclarationReflection) {
         `<InlineSection>`,
         `**Returns** ${renderType(f.signatures![0].type!)}`,
         `</InlineSection>`,
-        renderComment(f.signatures![0].comment),
+        renderComment(f.signatures![0]),
         `</Segment>`,
       ]
     }),
   ])
 }
 
-function renderInterfaces(module: TypeDoc.DeclarationReflection) {
+function renderInterfaces(
+  module: TypeDoc.DeclarationReflection,
+  options?: {
+    filter?: (i: TypeDoc.DeclarationReflection) => boolean
+    depth?: "h2" | "h3"
+  },
+) {
   console.debug(` ∟renderInterfaces`)
+  const depth = options?.depth ?? "h2"
   const interfaces = [
     ...module.getChildrenByKind(TypeDoc.ReflectionKind.Interface),
     ...module.getChildrenByKind(TypeDoc.ReflectionKind.TypeAlias),
-  ].sort((a, b) => a.name.localeCompare(b.name))
+  ]
+    .filter(options?.filter ?? (() => true))
+    .sort((a, b) => a.name.localeCompare(b.name))
 
   return interfaces.map((i) => {
     // render type alias as a type
@@ -391,7 +419,7 @@ function renderInterfaces(module: TypeDoc.DeclarationReflection) {
         `**Type** ${renderType(i.type!)}`,
         `</InlineSection>`,
         `</Section>`,
-        renderComment(i.comment),
+        renderComment(i),
         `</Segment>`,
       ]
     }
@@ -403,22 +431,25 @@ function renderInterfaces(module: TypeDoc.DeclarationReflection) {
       return [
         `## ${i.name}`,
         `<Segment>`,
-        `<Section type="parameters">`,
-        properties.map((p) => [
-          `- <p>[<code class="key">${renderProperty(p)}</code>](#${buildLinkHash(i.name, p.name)}) ${renderType(p.type!)}</p>`,
-          flattenNestedTypes(p.type!, p.name).map(
-            ({ depth, prefix, subType }) =>
-              `${" ".repeat(depth * 2)}- <p>[<code class="key">${renderProperty(
-                subType,
-              )}</code>](#${buildLinkHash(prefix, subType.name)}) ${renderType(subType.type!)}</p>`,
-          ),
+        render(depth === "h2", [
+          `<Section type="parameters">`,
+          properties.map((p) => [
+            `- <p>[<code class="key">${renderProperty(p)}</code>](#${buildLinkHash(i.name, p.name)}) ${renderType(p.type!)}</p>`,
+            flattenNestedTypes(p.type!, p.name).map(
+              ({ depth, prefix, subType }) =>
+                `${" ".repeat(depth * 2)}- <p>[<code class="key">${renderProperty(
+                  subType,
+                )}</code>](#${buildLinkHash(prefix, subType.name)}) ${renderType(subType.type!)}</p>`,
+            ),
+          ]),
+          methods.map((m) => {
+            return `- <p>[<code class="key">${renderProperty(m)}</code>](#${buildLinkHash(i.name, m.name)}) ${renderSignatureAsType(m.signatures![0])}</p>`
+          }),
+          `</Section>`,
         ]),
-        methods.map((m) => {
-          return `- <p>[<code class="key">${renderProperty(m)}</code>](#${buildLinkHash(i.name, m.name)}) ${renderSignatureAsType(m.signatures![0])}</p>`
-        }),
-        `</Section>`,
-        renderComment(i.comment),
+        renderComment(i),
         `</Segment>`,
+        // Render nested types
         properties.flatMap((p) => [
           `<NestedTitle id="${buildLinkHash(i.name, p.name)}" Tag="h4" parent="${i.name}.">${renderProperty(p)}</NestedTitle>`,
           `<Segment>`,
@@ -427,7 +458,7 @@ function renderInterfaces(module: TypeDoc.DeclarationReflection) {
           `**Type** ${renderType(p.type!)}`,
           `</InlineSection>`,
           `</Section>`,
-          renderComment(p.comment),
+          renderComment(p),
           `</Segment>`,
           flattenNestedTypes(p.type!, p.name).map(
             ({ depth, prefix, subType }) => [
@@ -438,20 +469,22 @@ function renderInterfaces(module: TypeDoc.DeclarationReflection) {
               `**Type** ${renderType(subType.type!)}`,
               `</InlineSection>`,
               `</Section>`,
-              renderComment(subType.comment),
+              renderComment(subType),
               `</Segment>`,
             ],
           ),
         ]),
         methods.flatMap((m) => [
-          `<NestedTitle id="${buildLinkHash(i.name, m.name)}" Tag="h4" parent="${i.name}.">${renderProperty(m)}</NestedTitle>`,
+          depth === "h2"
+            ? `<NestedTitle id="${buildLinkHash(i.name, m.name)}" Tag="h4" parent="${i.name}.">${renderProperty(m)}</NestedTitle>`
+            : `### ${m.name}`,
           `<Segment>`,
           `<Section type="parameters">`,
           `<InlineSection>`,
           `**Type** ${renderSignatureAsType(m.signatures![0])}`,
           `</InlineSection>`,
           `</Section>`,
-          renderComment(m.signatures![0].comment),
+          renderComment(m.signatures![0]),
           `</Segment>`,
         ]),
       ]
@@ -459,11 +492,23 @@ function renderInterfaces(module: TypeDoc.DeclarationReflection) {
   })
 }
 
-function renderComment(comment?: TypeDoc.Comment) {
-  if (!comment) return []
+function renderComment(declaration: TypeDoc.Reflection) {
+  if (!declaration.comment) return []
 
   return [
-    comment.blockTags
+    declaration instanceof TypeDoc.DeclarationReflection &&
+    declaration.defaultValue
+      ? [
+          ``,
+          `<InlineSection>`,
+          `**Default** ${renderType({
+            type: "literal",
+            value: declaration.defaultValue.replace(/"/g, ""),
+          } as TypeDoc.LiteralType)}`,
+          `</InlineSection>`,
+        ]
+      : [],
+    declaration.comment.blockTags
       .filter((tag) => tag.tag === "@default")
       .map((tag) => {
         return [
@@ -484,8 +529,8 @@ function renderComment(comment?: TypeDoc.Comment) {
           `</InlineSection>`,
         ]
       }),
-    comment.summary.map((s) => s.text).join(""),
-    comment.blockTags
+    declaration.comment.summary.map((s) => s.text).join(""),
+    declaration.comment.blockTags
       .filter((tag) => tag.tag === "@example")
       .map((tag) => tag.content.map((c) => c.text)),
   ]
@@ -500,7 +545,13 @@ function renderSignatureAsType(signature: TypeDoc.SignatureReflection) {
   const parameters = (signature.parameters ?? [])
     .map(
       (parameter) =>
-        `${renderParameter(parameter)}: ${renderType(parameter.type!)}`,
+        `${renderParameter(parameter)}: ${
+          // If the type is an object, render it inline
+          parameter.type?.type === "reflection" &&
+          parameter.type.declaration.kind === TypeDoc.ReflectionKind.TypeLiteral
+            ? renderObjectTypeInline(parameter.type)
+            : renderType(parameter.type!)
+        }`,
     )
     .join(", ")
   return `<code class="primitive">(${parameters}) => ${renderType(
@@ -535,6 +586,24 @@ function renderProperty(property: TypeDoc.DeclarationReflection) {
 }
 
 function renderType(type: TypeDoc.SomeType): Text {
+  // Special handle hard-to-document types
+  if (
+    type.type === "reference" &&
+    type.package === "@openauthjs/openauth" &&
+    type.qualifiedName === "IssuerInput.Result"
+  )
+    return `<code class="type">${type.name}</code>`
+
+  // Special handle hard-to-document types
+  if (type.type === "indexedAccess") {
+    if (
+      type.indexType.type === "typeOperator" &&
+      type.indexType.target.type === "reference" &&
+      type.indexType.target.qualifiedName === "VerifyResult.T"
+    )
+      return `<code class="type">Subject</code>`
+  }
+
   if (type.type === "intrinsic") return renderIntrisicType(type)
   if (type.type === "literal") return renderLiteralType(type)
   if (type.type === "templateLiteral") return renderTemplateLiteralType(type)
@@ -543,6 +612,8 @@ function renderType(type: TypeDoc.SomeType): Text {
   if (type.type === "reference") {
     if (type.package === "typescript") return renderTypescriptType(type)
     if (type.package === "@openauthjs/openauth") return renderOpenAuthType(type)
+    if (type.package === "@standard-schema/spec")
+      return renderStandardSchemaType(type)
     return `<code class="type">${type.name}</code>`
   }
   if (
@@ -550,129 +621,154 @@ function renderType(type: TypeDoc.SomeType): Text {
     type.declaration.kind === TypeDoc.ReflectionKind.TypeLiteral
   ) {
     if (type.declaration.signatures) return renderCallbackType(type)
-    if (type.declaration.children) return renderDiscriminatedUnion(type)
+    return `<code class="primitive">Object</code>`
   }
-  return `<code class="primitive">${type.type}</code>`
-
-  function renderIntrisicType(type: TypeDoc.IntrinsicType) {
-    return `<code class="primitive">${type.name}</code>`
+  console.warn(`🟡️ WARNING: rendering "${type.type}" type as any`)
+  return `<code class="primitive">any</code>`
+}
+function renderIntrisicType(type: TypeDoc.IntrinsicType) {
+  return `<code class="primitive">${type.name}</code>`
+}
+function renderLiteralType(type: TypeDoc.LiteralType) {
+  // Intrisic values: don't print in quotes
+  // ie.
+  // {
+  //   "type": "literal",
+  //   "value": false
+  // }
+  if (type.value === true || type.value === false) {
+    return `<code class="primitive">${type.value}</code>`
   }
-  function renderLiteralType(type: TypeDoc.LiteralType) {
-    // Intrisic values: don't print in quotes
-    // ie.
-    // {
-    //   "type": "literal",
-    //   "value": false
-    // }
-    if (type.value === true || type.value === false) {
-      return `<code class="primitive">${type.value}</code>`
-    }
-    // String value
-    // ie.
-    // {
-    //   "type": "literal",
-    //   "value": "arm64"
-    // }
-    const sanitized =
-      typeof type.value === "string"
-        ? type.value!.replace(/([*:])/g, "\\$1")
-        : type.value
-    return `<code class="symbol">&ldquo;</code><code class="primitive">${sanitized}</code><code class="symbol">&rdquo;</code>`
+  // String value
+  // ie.
+  // {
+  //   "type": "literal",
+  //   "value": "arm64"
+  // }
+  const sanitized =
+    typeof type.value === "string"
+      ? type.value!.replace(/([*:])/g, "\\$1")
+      : type.value
+  return `<code class="symbol">&ldquo;</code><code class="primitive">${sanitized}</code><code class="symbol">&rdquo;</code>`
+}
+function renderTemplateLiteralType(type: TypeDoc.TemplateLiteralType) {
+  // ie. memory: `${number} MB`
+  // {
+  //   "type": "templateLiteral",
+  //   "head": "",
+  //   "tail": [
+  //     [
+  //       {
+  //         "type": "intrinsic",
+  //         "name": "number"
+  //       },
+  //       " MB"
+  //     ]
+  //   ]
+  // },
+  if (
+    typeof type.head !== "string" ||
+    type.tail.length !== 1 ||
+    type.tail[0].length !== 2 ||
+    type.tail[0][0].type !== "intrinsic" ||
+    typeof type.tail[0][1] !== "string"
+  ) {
+    console.error(type)
+    throw new Error(`Unsupported templateLiteral type`)
   }
-  function renderTemplateLiteralType(type: TypeDoc.TemplateLiteralType) {
-    // ie. memory: `${number} MB`
-    // {
-    //   "type": "templateLiteral",
-    //   "head": "",
-    //   "tail": [
-    //     [
-    //       {
-    //         "type": "intrinsic",
-    //         "name": "number"
-    //       },
-    //       " MB"
-    //     ]
-    //   ]
-    // },
-    if (
-      typeof type.head !== "string" ||
-      type.tail.length !== 1 ||
-      type.tail[0].length !== 2 ||
-      type.tail[0][0].type !== "intrinsic" ||
-      typeof type.tail[0][1] !== "string"
-    ) {
-      console.error(type)
-      throw new Error(`Unsupported templateLiteral type`)
-    }
-    return `<code class="symbol">&ldquo;</code><code class="primitive">${type.head}$\\{${type.tail[0][0].name}\\}${type.tail[0][1]}</code><code class="symbol">&rdquo;</code>`
-  }
-  function renderUnionType(type: TypeDoc.UnionType) {
-    return type.types
-      .map((t) => renderType(t))
-      .join(`<code class="symbol"> | </code>`)
-  }
-  function renderArrayType(type: TypeDoc.ArrayType) {
-    return type.elementType.type === "union"
-      ? `<code class="symbol">(</code>${renderType(
-          type.elementType,
-        )}<code class="symbol">)[]</code>`
-      : `${renderType(type.elementType)}<code class="symbol">[]</code>`
-  }
-  function renderCallbackType(type: TypeDoc.ReflectionType) {
-    return renderSignatureAsType(type.declaration.signatures![0])
-  }
-  function renderDiscriminatedUnion(type: TypeDoc.ReflectionType) {
-    return [
-      `<code class="symbol">&lcub; </code>`,
-      type.declaration
-        .children!.map((c) =>
-          [
-            `<code class="key">${c.name}</code>`,
-            `<code class="symbol">&colon; </code>`,
-            renderType(c.type!),
-          ].join(""),
-        )
-        .join(`<code class="symbol">, </code>`),
-      `<code class="symbol"> &rcub;</code>`,
-    ].join("")
-  }
-  function renderTypescriptType(type: TypeDoc.ReferenceType) {
-    // ie. Record<string, string>
-    return [
-      `<code class="primitive">${type.name}</code>`,
-      `<code class="symbol">&lt;</code>`,
-      type.typeArguments?.map((t) => renderType(t)).join(", "),
-      `<code class="symbol">&gt;</code>`,
-    ].join("")
-  }
-  function renderOpenAuthType(type: TypeDoc.ReferenceType) {
-    // Reference to a generic type, ie. T
-    if (type.refersToTypeParameter) return `<code class="primitive">any</code>`
-
-    // Reference to a non-documented type, ie. FetchLike
-    if (!type.reflection) return `<code class="type">${type.name}</code>`
-
-    if (type.reflection?.kind === TypeDoc.ReflectionKind.Class) {
-      const r = type.reflection as TypeDoc.DeclarationReflection
-      if (r.sources?.[0]?.fileName.endsWith("error.ts"))
-        return `[<code class="type">${r.name}</code>](/docs/issuer#${r.name.toLowerCase()})`
-    }
-
-    if (type.reflection?.kind === TypeDoc.ReflectionKind.Interface) {
-      const r = type.reflection as TypeDoc.DeclarationReflection
+  return `<code class="symbol">&ldquo;</code><code class="primitive">${type.head}$\\{${type.tail[0][0].name}\\}${type.tail[0][1]}</code><code class="symbol">&rdquo;</code>`
+}
+function renderUnionType(type: TypeDoc.UnionType) {
+  return type.types
+    .map((t) => {
+      // Handle discriminated unions
       if (
-        r.sources?.[0]?.fileName.startsWith("packages/openauth/src/provider/")
+        t.type === "reflection" &&
+        t.declaration.kind === TypeDoc.ReflectionKind.TypeLiteral &&
+        t.declaration.children
       ) {
-        const provider = r.sources?.[0]?.fileName
-          .split("/")
-          .pop()
-          ?.split(".")[0]
-        return `[<code class="type">${r.name}</code>](/docs/provider/${provider}#${r.name.toLowerCase()})`
+        return renderObjectTypeInline(t)
       }
-    }
+      return renderType(t)
+    })
+    .join(`<code class="symbol"> | </code>`)
+}
+function renderArrayType(type: TypeDoc.ArrayType) {
+  return type.elementType.type === "union"
+    ? `<code class="symbol">(</code>${renderType(
+        type.elementType,
+      )}<code class="symbol">)[]</code>`
+    : `${renderType(type.elementType)}<code class="symbol">[]</code>`
+}
+function renderCallbackType(type: TypeDoc.ReflectionType) {
+  return renderSignatureAsType(type.declaration.signatures![0])
+}
+function renderObjectTypeInline(type: TypeDoc.ReflectionType): Text {
+  return [
+    `<code class="symbol">&lcub; </code>`,
+    type.declaration
+      .children!.map((c) =>
+        [
+          `<code class="key">${c.name}</code>`,
+          `<code class="symbol">&colon; </code>`,
+          // If rendering inline, also render children inline
+          c.type?.type === "reflection" &&
+          c.type.declaration.kind === TypeDoc.ReflectionKind.TypeLiteral
+            ? renderObjectTypeInline(c.type)
+            : renderType(c.type!),
+        ].join(""),
+      )
+      .join(`<code class="symbol">, </code>`),
+    `<code class="symbol"> &rcub;</code>`,
+  ].join("")
+}
+function renderTypescriptType(type: TypeDoc.ReferenceType) {
+  // ie. Partial<Foo> => just render Foo
+  if (type.name === "Partial") return renderType(type.typeArguments![0])
 
-    return `[<code class="type">${type.name}</code>](#${type.name.toLowerCase()})`
+  // ie. Record<string, string>
+  return [
+    `<code class="primitive">${type.name}</code>`,
+    `<code class="symbol">&lt;</code>`,
+    type.typeArguments?.map((t) => renderType(t)).join(", "),
+    `<code class="symbol">&gt;</code>`,
+  ].join("")
+}
+function renderOpenAuthType(type: TypeDoc.ReferenceType) {
+  // Reference to a non-documented type, ie. FetchLike
+  if (!type.reflection) return `<code class="type">${type.name}</code>`
+
+  // Reference to a generic type
+  // ie.
+  // export function createSubjects<Schema extends SubjectSchema>(types: Schema): Schema {
+  //   return { ...types }
+  // }
+  if (type.reflection.kind === TypeDoc.ReflectionKind.TypeParameter) {
+    const t = (type.reflection as TypeDoc.TypeParameterReflection).type
+    if (t) return renderType(t)
   }
+
+  if (
+    type.reflection.kind === TypeDoc.ReflectionKind.TypeAlias ||
+    type.reflection.kind === TypeDoc.ReflectionKind.Interface ||
+    type.reflection.kind === TypeDoc.ReflectionKind.Class
+  ) {
+    const t = type.reflection as TypeDoc.DeclarationReflection
+    const fileName = t.sources?.[0]?.fileName
+    if (fileName?.startsWith("packages/openauth/src/subject.ts"))
+      return `[<code class="type">${t.name}</code>](/docs/subject#${t.name.toLowerCase()})`
+    if (fileName?.startsWith("packages/openauth/src/error.ts"))
+      return `[<code class="type">${t.name}</code>](/docs/issuer#${t.name.toLowerCase()})`
+    if (fileName?.startsWith("packages/openauth/src/provider/")) {
+      const provider = fileName.split("/").pop()?.split(".")[0]
+      return `[<code class="type">${t.name}</code>](/docs/provider/${provider}#${t.name.toLowerCase()})`
+    }
+  }
+
+  return `[<code class="type">${type.name}</code>](#${type.name.toLowerCase()})`
+}
+function renderStandardSchemaType(type: TypeDoc.ReferenceType) {
+  return `[<code class="type">${type.name}</code>](https://github.com/standard-schema/standard-schema)`
 }
 
 function render(condition: any, content: Text) {
@@ -743,8 +839,22 @@ function saveFile(moduleName: string, content: any[]) {
 }
 
 function configureLogger() {
-  if (process.env.DEBUG) return
+  if (process.env.DEBUG) {
+    console.warn = (...args) => {
+      warnings++
+      console.log(...args)
+    }
+    return
+  }
+
   console.debug = () => {}
+  console.warn = () => {}
+}
+
+function printWarnings() {
+  if (process.env.DEBUG) {
+    console.log(`- - -\n${warnings} warnings`)
+  }
 }
 
 async function build() {
@@ -801,4 +911,8 @@ async function build() {
   return project
 }
 
-async function generate() {}
+function print(type: TypeDoc.SomeType) {
+  // @ts-ignore
+  delete type._project
+  console.log(type)
+}

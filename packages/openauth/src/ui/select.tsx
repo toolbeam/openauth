@@ -1,5 +1,5 @@
 /**
- * The UI that's displayed when loading the root page of the issuer. You can configure
+ * The UI that's displayed when loading the root page of the OpenAuth server. You can configure
  * which providers should be displayed in the select UI.
  *
  * ```ts

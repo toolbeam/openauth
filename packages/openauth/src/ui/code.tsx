@@ -79,12 +79,15 @@ export type CodeUICopy = typeof DEFAULT_COPY
  */
 export interface CodeUIOptions {
   /**
-   * Callback to send the confirmation code to the user.
+   * Callback to send the pin code to the user.
+   *
+   * The `claims` object contains the email or phone number of the user. You can send the code
+   * using this.
    *
    * @example
    * ```ts
    * async (claims, code) => {
-   *   // Send an email with the code
+   *   // Send the code via the claim
    * }
    * ```
    */

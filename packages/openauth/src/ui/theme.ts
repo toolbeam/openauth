@@ -208,6 +208,7 @@ export const THEME_TERMINAL: Theme = {
  */
 export const THEME_SST: Theme = {
   title: "SST",
+  favicon: "https://sst.dev/favicon.svg",
   logo: {
     dark: "https://sst.dev/favicon.svg",
     light: "https://sst.dev/favicon.svg",

@@ -77,12 +77,15 @@ export default defineConfig({
       sidebar: [
         { label: "Intro", slug: "docs" },
         {
-          label: "Core",
+          label: "Quick Start",
           items: [
-            "docs/client",
-            { label: "Issuer", slug: "docs/issuer" },
-            { label: "Subject", slug: "docs/subject" },
+            { label: "Standalone", slug: "docs/start/standalone" },
+            { label: "SST", slug: "docs/start/sst" },
           ],
+        },
+        {
+          label: "Core",
+          items: ["docs/client", "docs/issuer", "docs/subject"],
         },
         {
           label: "Providers",
@@ -109,20 +112,11 @@ export default defineConfig({
         },
         {
           label: "UI",
-          items: [
-            "docs/ui/theme",
-            "docs/ui/select",
-            "docs/ui/code",
-            "docs/ui/password",
-          ],
+          items: ["docs/ui/theme", "docs/ui/select", "docs/ui/code", "docs/ui/password"],
         },
         {
           label: "Storage",
-          items: [
-            "docs/storage/memory",
-            "docs/storage/dynamo",
-            "docs/storage/cloudflare",
-          ],
+          items: ["docs/storage/memory", "docs/storage/dynamo", "docs/storage/cloudflare"],
         },
       ],
     }),

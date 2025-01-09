@@ -1,0 +1,376 @@
+---
+title: OpenAuth with Next.js
+description: Use OpenAuth to add authentication to your Next.js app.
+---
+
+import { Image } from "astro:assets"
+
+import nextAppDark from "./nextjs-dark.png"
+import nextAppLight from "./nextjs-light.png"
+
+We are going to createa new Next.js app and add authentication to it with OpenAuth.
+
+:::tip[View source]
+You can [view the source](https://github.com/openauthjs/openauth/tree/master/examples/quickstart/standalone) of this example in our repo.
+:::
+
+We are going to authenticate users by sending them a code to verify their email address.
+
+---
+
+## 1. Create a project
+
+Let's start by creating our Next.js app and starting it in dev mode.
+
+```bash
+bun create next-app oa-nextjs
+cd oa-nextjs
+bun dev
+```
+
+We are picking **TypeScript** and not selecting **ESLint**.
+
+This will start our Next.js app at `http://localhost:3000`.
+
+---
+
+## 2. Add OpenAuth server
+
+Next, let's add a directory for our OpenAuth server.
+
+```bash
+mkdir auth
+```
+
+Add our OpenAuth server to a `auth/index.ts` file.
+
+```ts title="auth/index.ts"
+import { issuer } from "@openauthjs/openauth"
+import { CodeUI } from "@openauthjs/openauth/ui/code"
+import { CodeProvider } from "@openauthjs/openauth/provider/code"
+import { MemoryStorage } from "@openauthjs/openauth/storage/memory"
+import { subjects } from "./subjects"
+
+async function getUser(email: string) {
+  // Get user from database and return user ID
+  return "123"
+}
+
+export default issuer({
+  subjects,
+  storage: MemoryStorage(),
+  providers: {
+    code: CodeProvider(
+      CodeUI({
+        sendCode: async (email, code) => {
+          console.log(email, code)
+        },
+      }),
+    ),
+  },
+  success: async (ctx, value) => {
+    if (value.provider === "code") {
+      return ctx.subject("user", {
+        id: await getUser(value.claims.email)
+      })
+    }
+    throw new Error("Invalid provider")
+  },
+})
+```
+
+---
+
+##### Define subjects
+
+We are also going to define our subjects. Add the following to a `auth/subjects.ts` file.
+
+```ts title="auth/subjects.ts"
+import { object, string } from "valibot"
+import { createSubjects } from "@openauthjs/openauth/subject"
+
+export const subjects = createSubjects({
+  user: object({
+    id: string(),
+  }),
+})
+```
+
+Let's install our dependencies.
+
+```bash
+bun add @openauthjs/openauth valibot
+```
+
+And add a script to start our auth server to `package.json`.
+
+```js title="package.json"
+"dev:auth": "PORT=3001 bun run --hot auth/index.ts",
+```
+
+Now run the auth server in a separate terminal.
+
+```bash
+bun dev:auth
+```
+
+This will start our auth server at `http://localhost:3001`.
+
+---
+
+## 3. Add OpenAuth client
+
+Next, let's add our OpenAuth client to our Next.js app. Add the following to `app/auth.ts`.
+
+```ts title="app/auth.ts"
+import { createClient } from "@openauthjs/openauth/client"
+import { cookies as getCookies } from "next/headers"
+
+export const client = createClient({
+  clientID: "nextjs",
+  issuer: "http://localhost:3001",
+})
+
+export async function setTokens(access: string, refresh: string) {
+  const cookies = await getCookies()
+
+  cookies.set({
+    name: "access_token",
+    value: access,
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 34560000,
+  })
+  cookies.set({
+    name: "refresh_token",
+    value: refresh,
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 34560000,
+  })
+}
+```
+
+Here we are assuming that our auth server is running at `http://localhost:3001`. Once the user is authenticated, we'll be saving their access and refresh tokens in _http only_ cookies.
+
+---
+
+##### Add auth actions
+
+Let's add the server actions that our Next.js app will need to authenticate users. Add the following to `app/actions.ts`.
+
+```ts title="app/actions.ts"
+"use server"
+
+import { redirect } from "next/navigation"
+import { headers as getHeaders, cookies as getCookies } from "next/headers"
+import { subjects } from "../auth/subjects"
+import { client, setTokens } from "./auth"
+
+export async function auth() {
+  const cookies = await getCookies()
+  const accessToken = cookies.get("access_token")
+  const refreshToken = cookies.get("refresh_token")
+
+  if (!accessToken) {
+    return false
+  }
+
+  const verified = await client.verify(subjects, accessToken.value, {
+    refresh: refreshToken?.value,
+  })
+
+  if (verified.err) {
+    return false
+  }
+  if (verified.tokens) {
+    await setTokens(verified.tokens.access, verified.tokens.refresh)
+  }
+
+  return verified.subject
+}
+
+export async function login() {
+  const cookies = await getCookies()
+  const accessToken = cookies.get("access_token")
+  const refreshToken = cookies.get("refresh_token")
+
+  if (accessToken) {
+    const verified = await client.verify(subjects, accessToken.value, {
+      refresh: refreshToken?.value,
+    })
+    if (!verified.err && verified.tokens) {
+      await setTokens(verified.tokens.access, verified.tokens.refresh)
+      redirect("/")
+    }
+  }
+
+  const headers = await getHeaders()
+  const host = headers.get("host")
+  const protocol = host?.includes("localhost") ? "http" : "https"
+  const { url } = await client.authorize(`${protocol}://${host}/api/callback`, "code")
+  redirect(url)
+}
+
+export async function logout() {
+  const cookies = await getCookies()
+  cookies.delete("access_token")
+  cookies.delete("refresh_token")
+
+  redirect("/")
+}
+```
+
+This is adding an `auth` action that checks if a user is authenticated, `login` that starts the OAuth flow, and `logout` that clears the session.
+
+---
+
+##### Add callback route
+
+When the OpenAuth flow is complete, users will be redirected back to our Next.js app. Let's add a callback route to handle this in `app/api/callback/route.ts`.
+
+```ts title="app/api/callback/route.ts"
+import { client, setTokens } from "../../auth"
+import { type NextRequest, NextResponse } from "next/server"
+
+export async function GET(req: NextRequest) {
+  const url = new URL(req.url)
+  const code = url.searchParams.get("code")
+
+  const exchanged = await client.exchange(code!, `${url.origin}/api/callback`)
+
+  if (exchanged.err) return NextResponse.json(exchanged.err, { status: 400 })
+
+  await setTokens(exchanged.tokens.access, exchanged.tokens.refresh)
+
+  return NextResponse.redirect(`${url.origin}/`)
+}
+```
+
+Once the user is authenticated, we redirect them to the root of our app.
+
+---
+
+## 4. Add auth to app
+
+Now we are ready to add authentication to our app. Replace the `<Home />` component in `app/page.tsx` with the following.
+
+```tsx title="app/page.tsx"
+import { auth, login, logout } from "./actions"
+
+export default async function Home() {
+  const subject = await auth()
+
+  return (
+    <div className={styles.page}>
+      <main className={styles.main}>
+        <Image
+          className={styles.logo}
+          src="/next.svg"
+          alt="Next.js logo"
+          width={180}
+          height={38}
+          priority
+        />
+        <ol>
+          {subject ? (
+            <>
+              <li>
+                Logged in as <code>{subject.properties.id}</code>.
+              </li>
+              <li>
+                And then check out <code>app/page.tsx</code>.
+              </li>
+            </>
+          ) : (
+            <>
+              <li>Login with your email and password.</li>
+              <li>
+                And then check out <code>app/page.tsx</code>.
+              </li>
+            </>
+          )}
+        </ol>
+
+        <div className={styles.ctas}>
+          {subject ? (
+            <form action={logout}>
+              <button className={styles.secondary}>Logout</button>
+            </form>
+          ) : (
+            <form action={login}>
+              <button className={styles.primary}>Login with OpenAuth</button>
+            </form>
+          )}
+        </div>
+      </main>
+    </div>
+  )
+}
+```
+
+Let's also add these styles to `app/page.module.css`.
+
+```css title="app/page.module.css"
+.ctas button {
+  appearance: none;
+  background: transparent;
+  border-radius: 128px;
+  height: 48px;
+  padding: 0 20px;
+  border: none;
+  border: 1px solid transparent;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    border-color 0.2s;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+button.primary {
+  background: var(--foreground);
+  color: var(--background);
+  gap: 8px;
+}
+
+button.secondary {
+  border-color: var(--gray-alpha-200);
+  min-width: 180px;
+}
+```
+
+---
+
+## 4. Test your app
+
+Head to `http://localhost:3000` and click the login button, you should be redirected to the OpenAuth server asking you to put in your email.
+
+If you check the terminal running the auth server, you'll see the code being console logged. You can use this code to login.
+
+<picture>
+  <source srcset={nextAppDark.src} media="(prefers-color-scheme: dark)" />
+  <source srcset={nextAppLight.src} media="(prefers-color-scheme: light)" />
+  <Image src={nextAppLight} alt="Next.js app login with OpenAuth" />
+</picture>
+
+This should log you in and print your user ID.
+
+---
+
+## Deploy your app
+
+To are now ready to deploy your app and your OpenAuth server. A couple of changes you'll need to make.
+
+1. Use a more persistent `storage` like [DynamoDB](https://aws.amazon.com/dynamodb/) or [Cloudflare KV](https://developers.cloudflare.com/kv/) in your `auth/index.ts`.
+2. Instead of printing out the code, email that to the user.
+3. Finally, in your `app/auth.ts`, use the deployed auth server URL instead of `http://localhost:3001`.
+
+You can also check out the [**SST quick start**](/docs/start/sst) for a fully deployed example.

@@ -1,15 +1,141 @@
 ---
-title: issuer
-editUrl: false
-description: A page for the issuer.
+title: Issuer
+editUrl: https://github.com/openauthjs/openauth/blob/master/packages/openauth/src/issuer.ts
+description: Reference doc for the OpenAuth server.
 ---
 
 import Segment from '../../../components/tsdoc/Segment.astro';
 import Section from '../../../components/tsdoc/Section.astro';
 import NestedTitle from '../../../components/tsdoc/NestedTitle.astro';
 import InlineSection from '../../../components/tsdoc/InlineSection.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <div class="tsdoc">
+<Section type="about">
+The `issuer` create an OpentAuth server, a [Hono](https://hono.dev) app that's
+designed to run anywhere.
+
+The `issuer` function requires a few things:
+
+```ts title="issuer.ts"
+import { issuer } from "@openauthjs/openauth"
+
+const app = issuer({
+  providers: { ... },
+  storage,
+  subjects,
+  success: async (ctx, value) => { ... }
+})
+```
+
+#### Add providers
+
+You start by specifying the auth providers you are going to use. Let's say you want your users
+to be able to authenticate with GitHub and with their email and password.
+
+```ts title="issuer.ts"
+import { GithubProvider } from "@openauthjs/openauth/provider/github"
+import { PasswordProvider } from "@openauthjs/openauth/provider/password"
+
+const app = issuer({
+  providers: {
+    github: GithubAdapter({
+      // ...
+    }),
+    password: PasswordProvider({
+      // ...
+    }),
+  },
+})
+```
+
+#### Handle success
+
+The `success` callback receives the payload when a user completes a provider's auth flow.
+
+```ts title="issuer.ts"
+const app = issuer({
+  providers: { ... },
+  subjects,
+  async success(ctx, value) {
+    let userID
+    if (value.provider === "password") {
+      console.log(value.email)
+      userID = ... // lookup user or create them
+    }
+    if (value.provider === "github") {
+      console.log(value.tokenset.access)
+      userID = ... // lookup user or create them
+    }
+    return ctx.subject("user", {
+      userID
+    })
+  }
+})
+```
+
+Once complete, the `issuer` issues the access tokens that a client can use. The `ctx.subject`
+call is what is placed in the access token as a JWT.
+
+#### Define subjects
+
+You define the shape of these in the `subjects` field.
+
+```ts title="subjects.ts"
+import { object, string } from "valibot"
+import { createSubjects } from "@openauthjs/openauth/subject"
+
+const subjects = createSubjects({
+  user: object({
+    userID: string()
+  })
+})
+```
+
+It's good to place this in a separate file since this'll be used in your client apps as well.
+
+```ts title="issuer.ts"
+import { subjects } from "./subjects.js"
+
+const app = issuer({
+  providers: { ... },
+  subjects,
+  // ...
+})
+```
+
+#### Deploy
+
+Since `issuer` is a Hono app, you can deploy it anywhere Hono supports.
+
+<Tabs>
+  <TabItem label="Node">
+  ```ts title="issuer.ts"
+  import { serve } from "@hono/node-server"
+
+  serve(app)
+  ```
+  </TabItem>
+  <TabItem label="Lambda">
+  ```ts title="issuer.ts"
+  import { handle } from "hono/aws-lambda"
+
+  export const handler = handle(app)
+  ```
+  </TabItem>
+  <TabItem label="Bun">
+  ```ts title="issuer.ts"
+  export default app
+  ```
+  </TabItem>
+  <TabItem label="Workers">
+  ```ts title="issuer.ts"
+  export default app
+  ```
+  </TabItem>
+</Tabs>
+</Section>
+---
 ## Methods
 ### issuer
 <Segment>
@@ -21,114 +147,62 @@ issuer(input)
 <Section type="parameters">
 #### Parameters
 - <p><code class="key">input</code> [<code class="type">IssuerInput</code>](#issuerinput)</p>
-The input object containing the subjects, storage, providers, theme, and optional success responder.
 </Section>
 <InlineSection>
 **Returns** <code class="type">Hono</code>
 </InlineSection>
-Create an issuer object for handling OAuth 2.0 authorization requests.
-</Segment>
-## AuthorizationState
-<Segment>
-<Section type="parameters">
-- <p>[<code class="key">audience?</code>](#authorizationstate.audience) <code class="primitive">string</code></p>
-- <p>[<code class="key">client_id</code>](#authorizationstate.client_id) <code class="primitive">string</code></p>
-- <p>[<code class="key">pkce?</code>](#authorizationstate.pkce) <code class="symbol">&lcub; </code><code class="key">challenge</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">method</code><code class="symbol">&colon; </code><code class="symbol">&ldquo;</code><code class="primitive">S256</code><code class="symbol">&rdquo;</code><code class="symbol"> &rcub;</code></p>
-  - <p>[<code class="key">challenge</code>](#pkce.challenge) <code class="primitive">string</code></p>
-  - <p>[<code class="key">method</code>](#pkce.method) <code class="symbol">&ldquo;</code><code class="primitive">S256</code><code class="symbol">&rdquo;</code></p>
-- <p>[<code class="key">redirect_uri</code>](#authorizationstate.redirect_uri) <code class="primitive">string</code></p>
-- <p>[<code class="key">response_type</code>](#authorizationstate.response_type) <code class="primitive">string</code></p>
-- <p>[<code class="key">state</code>](#authorizationstate.state) <code class="primitive">string</code></p>
-</Section>
-</Segment>
-<NestedTitle id="authorizationstate.audience" Tag="h4" parent="AuthorizationState.">audience?</NestedTitle>
-<Segment>
-<Section type="parameters">
-<InlineSection>
-**Type** <code class="primitive">string</code>
-</InlineSection>
-</Section>
-</Segment>
-<NestedTitle id="authorizationstate.client_id" Tag="h4" parent="AuthorizationState.">client_id</NestedTitle>
-<Segment>
-<Section type="parameters">
-<InlineSection>
-**Type** <code class="primitive">string</code>
-</InlineSection>
-</Section>
-</Segment>
-<NestedTitle id="authorizationstate.pkce" Tag="h4" parent="AuthorizationState.">pkce?</NestedTitle>
-<Segment>
-<Section type="parameters">
-<InlineSection>
-**Type** <code class="symbol">&lcub; </code><code class="key">challenge</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">method</code><code class="symbol">&colon; </code><code class="symbol">&ldquo;</code><code class="primitive">S256</code><code class="symbol">&rdquo;</code><code class="symbol"> &rcub;</code>
-</InlineSection>
-</Section>
-</Segment>
-<NestedTitle id="pkce.challenge" Tag="h5" parent="AuthorizationState.pkce.">challenge</NestedTitle>
-<Segment>
-<Section type="parameters">
-<InlineSection>
-**Type** <code class="primitive">string</code>
-</InlineSection>
-</Section>
-</Segment>
-<NestedTitle id="pkce.method" Tag="h5" parent="AuthorizationState.pkce.">method</NestedTitle>
-<Segment>
-<Section type="parameters">
-<InlineSection>
-**Type** <code class="symbol">&ldquo;</code><code class="primitive">S256</code><code class="symbol">&rdquo;</code>
-</InlineSection>
-</Section>
-</Segment>
-<NestedTitle id="authorizationstate.redirect_uri" Tag="h4" parent="AuthorizationState.">redirect_uri</NestedTitle>
-<Segment>
-<Section type="parameters">
-<InlineSection>
-**Type** <code class="primitive">string</code>
-</InlineSection>
-</Section>
-</Segment>
-<NestedTitle id="authorizationstate.response_type" Tag="h4" parent="AuthorizationState.">response_type</NestedTitle>
-<Segment>
-<Section type="parameters">
-<InlineSection>
-**Type** <code class="primitive">string</code>
-</InlineSection>
-</Section>
-</Segment>
-<NestedTitle id="authorizationstate.state" Tag="h4" parent="AuthorizationState.">state</NestedTitle>
-<Segment>
-<Section type="parameters">
-<InlineSection>
-**Type** <code class="primitive">string</code>
-</InlineSection>
-</Section>
+Create an OpenAuth server, a Hono app.
 </Segment>
 ## IssuerInput
 <Segment>
 <Section type="parameters">
-- <p>[<code class="key">providers</code>](#issuerinput.providers) <code class="primitive">any</code></p>
+- <p>[<code class="key">providers</code>](#issuerinput.providers) <code class="primitive">Record</code><code class="symbol">&lt;</code><code class="primitive">string</code>, <code class="type">Provider</code><code class="symbol">&gt;</code></p>
 - <p>[<code class="key">storage?</code>](#issuerinput.storage) <code class="type">StorageAdapter</code></p>
-- <p>[<code class="key">subjects</code>](#issuerinput.subjects) <code class="primitive">any</code></p>
+- <p>[<code class="key">subjects</code>](#issuerinput.subjects) [<code class="type">SubjectSchema</code>](/docs/subject#subjectschema)</p>
 - <p>[<code class="key">theme?</code>](#issuerinput.theme) [<code class="type">Theme</code>](#theme)</p>
-- <p>[<code class="key">ttl?</code>](#issuerinput.ttl) <code class="symbol">&lcub; </code><code class="key">access</code><code class="symbol">&colon; </code><code class="primitive">number</code><code class="symbol">, </code><code class="key">refresh</code><code class="symbol">&colon; </code><code class="primitive">number</code><code class="symbol"> &rcub;</code></p>
+- <p>[<code class="key">ttl?</code>](#issuerinput.ttl) <code class="primitive">Object</code></p>
   - <p>[<code class="key">access?</code>](#ttl.access) <code class="primitive">number</code></p>
   - <p>[<code class="key">refresh?</code>](#ttl.refresh) <code class="primitive">number</code></p>
 - <p>[<code class="key">allow?</code>](#issuerinput.allow) <code class="primitive">(input: <code class="symbol">&lcub; </code><code class="key">audience</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">clientID</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">redirectURI</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol"> &rcub;</code>, req: <code class="type">Request</code>) => <code class="primitive">Promise</code><code class="symbol">&lt;</code><code class="primitive">boolean</code><code class="symbol">&gt;</code></code></p>
-- <p>[<code class="key">error?</code>](#issuerinput.error) <code class="primitive">(error: [<code class="type">UnknownStateError</code>](/docs/issuer#unknownstateerror), req: <code class="type">Request</code>) => <code class="primitive">Promise</code><code class="symbol">&lt;</code><code class="type">Response</code><code class="symbol">&gt;</code></code></p>
 - <p>[<code class="key">select?</code>](#issuerinput.select) <code class="primitive">(providers: <code class="primitive">Record</code><code class="symbol">&lt;</code><code class="primitive">string</code>, <code class="primitive">string</code><code class="symbol">&gt;</code>, req: <code class="type">Request</code>) => <code class="primitive">Promise</code><code class="symbol">&lt;</code><code class="type">Response</code><code class="symbol">&gt;</code></code></p>
-- <p>[<code class="key">start?</code>](#issuerinput.start) <code class="primitive">(req: <code class="type">Request</code>) => <code class="primitive">Promise</code><code class="symbol">&lt;</code><code class="primitive">void</code><code class="symbol">&gt;</code></code></p>
-- <p>[<code class="key">success</code>](#issuerinput.success) <code class="primitive">(response: [<code class="type">OnSuccessResponder</code>](#onsuccessresponder), input: <code class="primitive">any</code>, req: <code class="type">Request</code>) => <code class="primitive">Promise</code><code class="symbol">&lt;</code><code class="type">Response</code><code class="symbol">&gt;</code></code></p>
+- <p>[<code class="key">success</code>](#issuerinput.success) <code class="primitive">(response: [<code class="type">OnSuccessResponder</code>](#onsuccessresponder), input: <code class="type">Result</code>, req: <code class="type">Request</code>) => <code class="primitive">Promise</code><code class="symbol">&lt;</code><code class="type">Response</code><code class="symbol">&gt;</code></code></p>
 </Section>
 </Segment>
 <NestedTitle id="issuerinput.providers" Tag="h4" parent="IssuerInput.">providers</NestedTitle>
 <Segment>
 <Section type="parameters">
 <InlineSection>
-**Type** <code class="primitive">any</code>
+**Type** <code class="primitive">Record</code><code class="symbol">&lt;</code><code class="primitive">string</code>, <code class="type">Provider</code><code class="symbol">&gt;</code>
 </InlineSection>
 </Section>
+The providers that you want your OpenAuth server to support.
+```ts title="issuer.ts"
+import { GithubProvider } from "@openauthjs/openauth/provider/github"
+
+issuer({
+  providers: {
+    github: GithubProvider()
+  }
+})
+```
+
+
+The key is just a string that you can use to identify the provider. It's passed back to
+the 
+`success`
+ callback.
+
+You can also specify multiple providers.
+
+
+```ts
+{
+  providers: {
+    github: GithubProvider(),
+    google: GoogleProvider()
+  }
+}
+```
 </Segment>
 <NestedTitle id="issuerinput.storage" Tag="h4" parent="IssuerInput.">storage?</NestedTitle>
 <Segment>
@@ -137,14 +211,37 @@ Create an issuer object for handling OAuth 2.0 authorization requests.
 **Type** <code class="type">StorageAdapter</code>
 </InlineSection>
 </Section>
+The storage adapter that you want to use.
+```ts title="issuer.ts"
+import { DynamoStorage } from "@openauthjs/openauth/storage/dynamo"
+
+issuer({
+  storage: DynamoStorage()
+  // ...
+})
+```
 </Segment>
 <NestedTitle id="issuerinput.subjects" Tag="h4" parent="IssuerInput.">subjects</NestedTitle>
 <Segment>
 <Section type="parameters">
 <InlineSection>
-**Type** <code class="primitive">any</code>
+**Type** [<code class="type">SubjectSchema</code>](/docs/subject#subjectschema)
 </InlineSection>
 </Section>
+The shape of the subjects that you want to return.
+```ts title="issuer.ts"
+import { object, string } from "valibot"
+import { createSubjects } from "@openauthjs/openauth/subject"
+
+issuer({
+  subjects: createSubjects({
+    user: object({
+      userID: string()
+    })
+  })
+  // ...
+})
+```
 </Segment>
 <NestedTitle id="issuerinput.theme" Tag="h4" parent="IssuerInput.">theme?</NestedTitle>
 <Segment>
@@ -153,14 +250,52 @@ Create an issuer object for handling OAuth 2.0 authorization requests.
 **Type** [<code class="type">Theme</code>](#theme)
 </InlineSection>
 </Section>
+The theme you want to use for the UI.
+
+This includes the UI the user sees when selecting a provider. And the `PasswordUI` and
+`CodeUI` that are used by the `PasswordProvider` and `CodeProvider`.
+```ts title="issuer.ts"
+import { THEME_SST } from "@openauthjs/openauth/ui/theme"
+
+issuer({
+  theme: THEME_SST
+  // ...
+})
+```
+
+
+Or define your own.
+
+
+```ts title="issuer.ts"
+import type { Theme } from "@openauthjs/openauth/ui/theme"
+
+const MY_THEME: Theme = {
+  // ...
+}
+
+issuer({
+  theme: MY_THEME
+  // ...
+})
+```
 </Segment>
 <NestedTitle id="issuerinput.ttl" Tag="h4" parent="IssuerInput.">ttl?</NestedTitle>
 <Segment>
 <Section type="parameters">
 <InlineSection>
-**Type** <code class="symbol">&lcub; </code><code class="key">access</code><code class="symbol">&colon; </code><code class="primitive">number</code><code class="symbol">, </code><code class="key">refresh</code><code class="symbol">&colon; </code><code class="primitive">number</code><code class="symbol"> &rcub;</code>
+**Type** <code class="primitive">Object</code>
 </InlineSection>
 </Section>
+Set the TTL, in seconds, for access and refresh tokens.
+```ts
+{
+  ttl: {
+    access: 60 * 60 * 24 * 30,
+    refresh: 60 * 60 * 24 * 365
+  }
+}
+```
 </Segment>
 <NestedTitle id="ttl.access" Tag="h5" parent="IssuerInput.ttl.">access?</NestedTitle>
 <Segment>
@@ -169,6 +304,11 @@ Create an issuer object for handling OAuth 2.0 authorization requests.
 **Type** <code class="primitive">number</code>
 </InlineSection>
 </Section>
+
+<InlineSection>
+**Default** 60 * 60 * 24 * 30
+</InlineSection>
+The TTL for access tokens.
 </Segment>
 <NestedTitle id="ttl.refresh" Tag="h5" parent="IssuerInput.ttl.">refresh?</NestedTitle>
 <Segment>
@@ -177,6 +317,11 @@ Create an issuer object for handling OAuth 2.0 authorization requests.
 **Type** <code class="primitive">number</code>
 </InlineSection>
 </Section>
+
+<InlineSection>
+**Default** 60 * 60 * 24 * 365
+</InlineSection>
+The TTL for refresh tokens.
 </Segment>
 <NestedTitle id="issuerinput.allow" Tag="h4" parent="IssuerInput.">allow?</NestedTitle>
 <Segment>
@@ -185,14 +330,21 @@ Create an issuer object for handling OAuth 2.0 authorization requests.
 **Type** <code class="primitive">(input: <code class="symbol">&lcub; </code><code class="key">audience</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">clientID</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">redirectURI</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol"> &rcub;</code>, req: <code class="type">Request</code>) => <code class="primitive">Promise</code><code class="symbol">&lt;</code><code class="primitive">boolean</code><code class="symbol">&gt;</code></code>
 </InlineSection>
 </Section>
-</Segment>
-<NestedTitle id="issuerinput.error" Tag="h4" parent="IssuerInput.">error?</NestedTitle>
-<Segment>
-<Section type="parameters">
-<InlineSection>
-**Type** <code class="primitive">(error: [<code class="type">UnknownStateError</code>](/docs/issuer#unknownstateerror), req: <code class="type">Request</code>) => <code class="primitive">Promise</code><code class="symbol">&lt;</code><code class="type">Response</code><code class="symbol">&gt;</code></code>
-</InlineSection>
-</Section>
+Override the logic for whether a client request is allowed to call the issuer.
+
+By default, it uses the following:
+
+- Allow if the `redirectURI` is localhost.
+- Compare `redirectURI` to the request's hostname or the `x-forwarded-host` header. If they
+  are from the same sub-domain level, then allow.
+```ts
+{
+  allow: async (input, req) => {
+    // Allow all clients
+    return true
+  }
+}
+```
 </Segment>
 <NestedTitle id="issuerinput.select" Tag="h4" parent="IssuerInput.">select?</NestedTitle>
 <Segment>
@@ -201,45 +353,81 @@ Create an issuer object for handling OAuth 2.0 authorization requests.
 **Type** <code class="primitive">(providers: <code class="primitive">Record</code><code class="symbol">&lt;</code><code class="primitive">string</code>, <code class="primitive">string</code><code class="symbol">&gt;</code>, req: <code class="type">Request</code>) => <code class="primitive">Promise</code><code class="symbol">&lt;</code><code class="type">Response</code><code class="symbol">&gt;</code></code>
 </InlineSection>
 </Section>
-</Segment>
-<NestedTitle id="issuerinput.start" Tag="h4" parent="IssuerInput.">start?</NestedTitle>
-<Segment>
-<Section type="parameters">
+
 <InlineSection>
-**Type** <code class="primitive">(req: <code class="type">Request</code>) => <code class="primitive">Promise</code><code class="symbol">&lt;</code><code class="primitive">void</code><code class="symbol">&gt;</code></code>
+**Default** Select()
 </InlineSection>
-</Section>
+Optionally, configure the UI that's displayed when the user visits the root URL of the
+of the OpenAuth server.
+
+```ts title="issuer.ts"
+import { Select } from "@openauthjs/openauth/ui/select"
+
+issuer({
+  select: Select({
+    providers: {
+      github: { hide: true },
+      google: { display: "Google" }
+    }
+  })
+  // ...
+})
+```
 </Segment>
 <NestedTitle id="issuerinput.success" Tag="h4" parent="IssuerInput.">success</NestedTitle>
 <Segment>
 <Section type="parameters">
 <InlineSection>
-**Type** <code class="primitive">(response: [<code class="type">OnSuccessResponder</code>](#onsuccessresponder), input: <code class="primitive">any</code>, req: <code class="type">Request</code>) => <code class="primitive">Promise</code><code class="symbol">&lt;</code><code class="type">Response</code><code class="symbol">&gt;</code></code>
+**Type** <code class="primitive">(response: [<code class="type">OnSuccessResponder</code>](#onsuccessresponder), input: <code class="type">Result</code>, req: <code class="type">Request</code>) => <code class="primitive">Promise</code><code class="symbol">&lt;</code><code class="type">Response</code><code class="symbol">&gt;</code></code>
 </InlineSection>
 </Section>
+The success callback that's called when the user completes the flow.
+
+This is called after the user has been redirected back to your app after the OAuth flow.
+```ts
+{
+  success: async (ctx, value) => {
+    let userID
+    if (value.provider === "password") {
+      console.log(value.email)
+      userID = ... // lookup user or create them
+    }
+    if (value.provider === "github") {
+      console.log(value.tokenset.access)
+      userID = ... // lookup user or create them
+    }
+    return ctx.subject("user", {
+      userID
+    })
+  },
+  // ...
+}
+```
 </Segment>
 ## OnSuccessResponder
 <Segment>
 <Section type="parameters">
-- <p>[<code class="key">subject</code>](#onsuccessresponder.subject) <code class="primitive">(type: <code class="primitive">any</code>, properties: <code class="primitive">indexedAccess</code>, opts?: <code class="symbol">&lcub; </code><code class="key">subject</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">ttl</code><code class="symbol">&colon; </code><code class="symbol">&lcub; </code><code class="key">access</code><code class="symbol">&colon; </code><code class="primitive">number</code><code class="symbol">, </code><code class="key">refresh</code><code class="symbol">&colon; </code><code class="primitive">number</code><code class="symbol"> &rcub;</code><code class="symbol"> &rcub;</code>) => <code class="primitive">Promise</code><code class="symbol">&lt;</code><code class="type">Response</code><code class="symbol">&gt;</code></code></p>
+- <p>[<code class="key">subject</code>](#onsuccessresponder.subject) <code class="primitive">(type: <code class="primitive">string</code>, properties: <code class="primitive">any</code>, opts?: <code class="symbol">&lcub; </code><code class="key">subject</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">ttl</code><code class="symbol">&colon; </code><code class="symbol">&lcub; </code><code class="key">access</code><code class="symbol">&colon; </code><code class="primitive">number</code><code class="symbol">, </code><code class="key">refresh</code><code class="symbol">&colon; </code><code class="primitive">number</code><code class="symbol"> &rcub;</code><code class="symbol"> &rcub;</code>) => <code class="primitive">Promise</code><code class="symbol">&lt;</code><code class="type">Response</code><code class="symbol">&gt;</code></code></p>
 </Section>
-The interface for the success responder.
+Sets the subject payload in the JWT token and returns the response.
+
+```ts
+ctx.subject("user", {
+  userID
+})
+```
 </Segment>
 <NestedTitle id="onsuccessresponder.subject" Tag="h4" parent="OnSuccessResponder.">subject</NestedTitle>
 <Segment>
 <Section type="parameters">
 <InlineSection>
-**Type** <code class="primitive">(type: <code class="primitive">any</code>, properties: <code class="primitive">indexedAccess</code>, opts?: <code class="symbol">&lcub; </code><code class="key">subject</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">ttl</code><code class="symbol">&colon; </code><code class="symbol">&lcub; </code><code class="key">access</code><code class="symbol">&colon; </code><code class="primitive">number</code><code class="symbol">, </code><code class="key">refresh</code><code class="symbol">&colon; </code><code class="primitive">number</code><code class="symbol"> &rcub;</code><code class="symbol"> &rcub;</code>) => <code class="primitive">Promise</code><code class="symbol">&lt;</code><code class="type">Response</code><code class="symbol">&gt;</code></code>
+**Type** <code class="primitive">(type: <code class="primitive">string</code>, properties: <code class="primitive">any</code>, opts?: <code class="symbol">&lcub; </code><code class="key">subject</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">ttl</code><code class="symbol">&colon; </code><code class="symbol">&lcub; </code><code class="key">access</code><code class="symbol">&colon; </code><code class="primitive">number</code><code class="symbol">, </code><code class="key">refresh</code><code class="symbol">&colon; </code><code class="primitive">number</code><code class="symbol"> &rcub;</code><code class="symbol"> &rcub;</code>) => <code class="primitive">Promise</code><code class="symbol">&lt;</code><code class="type">Response</code><code class="symbol">&gt;</code></code>
 </InlineSection>
 </Section>
-</Segment>
-## Prettify
-<Segment>
-<Section type="parameters">
-<InlineSection>
-**Type** <code class="primitive">intersection</code>
-</InlineSection>
-</Section>
+The `type` is the type of the subject, that was defined in the `subjects` field.
+
+The `properties` are the properties of the subject. This is the shape of the subject that
+you defined in the `subjects` field.
 </Segment>
 ## Errors
 <Section type="about">

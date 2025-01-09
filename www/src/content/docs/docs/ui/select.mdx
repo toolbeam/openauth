@@ -8,10 +8,11 @@ import Segment from '../../../../components/tsdoc/Segment.astro';
 import Section from '../../../../components/tsdoc/Section.astro';
 import NestedTitle from '../../../../components/tsdoc/NestedTitle.astro';
 import InlineSection from '../../../../components/tsdoc/InlineSection.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <div class="tsdoc">
 <Section type="about">
-The UI that's displayed when loading the root page of the issuer. You can configure
+The UI that's displayed when loading the root page of the OpenAuth server. You can configure
 which providers should be displayed in the select UI.
 
 ```ts
@@ -52,7 +53,7 @@ Select(props?)
 ## SelectProps
 <Segment>
 <Section type="parameters">
-- <p>[<code class="key">providers?</code>](#selectprops.providers) <code class="primitive">Record</code><code class="symbol">&lt;</code><code class="primitive">string</code>, <code class="symbol">&lcub; </code><code class="key">display</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">hide</code><code class="symbol">&colon; </code><code class="primitive">boolean</code><code class="symbol"> &rcub;</code><code class="symbol">&gt;</code></p>
+- <p>[<code class="key">providers?</code>](#selectprops.providers) <code class="primitive">Record</code><code class="symbol">&lt;</code><code class="primitive">string</code>, <code class="primitive">Object</code><code class="symbol">&gt;</code></p>
   - <p>[<code class="key">display?</code>](#providers[].display) <code class="primitive">string</code></p>
   - <p>[<code class="key">hide?</code>](#providers[].hide) <code class="primitive">boolean</code></p>
 </Section>
@@ -61,7 +62,7 @@ Select(props?)
 <Segment>
 <Section type="parameters">
 <InlineSection>
-**Type** <code class="primitive">Record</code><code class="symbol">&lt;</code><code class="primitive">string</code>, <code class="symbol">&lcub; </code><code class="key">display</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">hide</code><code class="symbol">&colon; </code><code class="primitive">boolean</code><code class="symbol"> &rcub;</code><code class="symbol">&gt;</code>
+**Type** <code class="primitive">Record</code><code class="symbol">&lt;</code><code class="primitive">string</code>, <code class="primitive">Object</code><code class="symbol">&gt;</code>
 </InlineSection>
 </Section>
 An object with all the providers and their config; where the key is the provider name.

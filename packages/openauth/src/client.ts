@@ -4,7 +4,7 @@
  *
  * First, create a client.
  *
- * ```ts
+ * ```ts title="client.ts"
  * import { createClient } from "@openauthjs/openauth/client"
  *
  * const client = createClient({
@@ -126,7 +126,7 @@ export interface ClientInput {
    */
   clientID: string
   /**
-   * The URL of your authorization server.
+   * The URL of your OpenAuth server.
    *
    * @example
    * ```ts

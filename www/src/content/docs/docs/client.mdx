@@ -1,13 +1,14 @@
 ---
 title: Client
 editUrl: https://github.com/openauthjs/openauth/blob/master/packages/openauth/src/client.ts
-description: Reference doc for the client SDK.
+description: Reference doc for the OpenAuth client.
 ---
 
 import Segment from '../../../components/tsdoc/Segment.astro';
 import Section from '../../../components/tsdoc/Section.astro';
 import NestedTitle from '../../../components/tsdoc/NestedTitle.astro';
 import InlineSection from '../../../components/tsdoc/InlineSection.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <div class="tsdoc">
 <Section type="about">
@@ -16,7 +17,7 @@ and verify tokens.
 
 First, create a client.
 
-```ts
+```ts title="client.ts"
 import { createClient } from "@openauthjs/openauth/client"
 
 const client = createClient({
@@ -66,6 +67,208 @@ Configure the client.
 **Returns** [<code class="type">Client</code>](#client)
 </InlineSection>
 Create an OpenAuth client.
+</Segment>
+## Client
+<Segment>
+An instance of the OpenAuth client contains the following methods.
+</Segment>
+### authorize
+<Segment>
+<Section type="parameters">
+<InlineSection>
+**Type** <code class="primitive">(redirectURI: <code class="primitive">string</code>, response: <code class="symbol">&ldquo;</code><code class="primitive">code</code><code class="symbol">&rdquo;</code><code class="symbol"> | </code><code class="symbol">&ldquo;</code><code class="primitive">token</code><code class="symbol">&rdquo;</code>, opts?: [<code class="type">AuthorizeOptions</code>](#authorizeoptions)) => <code class="primitive">Promise</code><code class="symbol">&lt;</code>[<code class="type">AuthorizeResult</code>](#authorizeresult)<code class="symbol">&gt;</code></code>
+</InlineSection>
+</Section>
+Start the autorization flow. For example, in SSR sites.
+
+```ts
+const { url } = await client.authorize(<redirect_uri>, "code")
+```
+
+This takes a redirect URI and the type of flow you want to use. The redirect URI is the
+location where the user will be redirected to after the flow is complete.
+
+Supports both the _code_ and _token_ flows. We recommend using the _code_ flow as it's more
+secure.
+
+:::tip
+This returns a URL to redirect the user to. This starts the OAuth flow.
+:::
+
+This returns a URL to the auth server. You can redirect the user to the URL to start the
+OAuth flow.
+
+For SPA apps, we recommend using the PKCE flow.
+
+```ts {4}
+const { challenge, url } = await client.authorize(
+  <redirect_uri>,
+  "code",
+  { pkce: true }
+)
+```
+
+This returns a redirect URL and a challenge that you need to use later to verify the code.
+</Segment>
+### exchange
+<Segment>
+<Section type="parameters">
+<InlineSection>
+**Type** <code class="primitive">(code: <code class="primitive">string</code>, redirectURI: <code class="primitive">string</code>, verifier?: <code class="primitive">string</code>) => <code class="primitive">Promise</code><code class="symbol">&lt;</code>[<code class="type">ExchangeSuccess</code>](#exchangesuccess)<code class="symbol"> | </code>[<code class="type">ExchangeError</code>](#exchangeerror)<code class="symbol">&gt;</code></code>
+</InlineSection>
+</Section>
+Exchange the code for access and refresh tokens.
+
+```ts
+const exchanged = await client.exchange(<code>, <redirect_uri>)
+```
+
+You call this after the user has been redirected back to your app after the OAuth flow.
+
+:::tip
+For SSR sites, the code is returned in the query parameter.
+:::
+
+So the code comes from the query parameter in the redirect URI. The redirect URI here is
+the one that you passed in to the `authorize` call when starting the flow.
+
+:::tip
+For SPA sites, the code is returned through the URL hash.
+:::
+
+If you used the PKCE flow for an SPA app, the code is returned as a part of the redirect URL
+hash.
+
+```ts {4}
+const exchanged = await client.exchange(
+  <code>,
+  <redirect_uri>,
+  <challenge.verifier>
+)
+```
+
+You also need to pass in the previously stored challenge verifier.
+
+This method returns the access and refresh tokens. Or if it fails, it returns an error that
+you can handle depending on the error.
+
+```ts
+import { InvalidAuthorizationCodeError } from "@openauthjs/openauth/error"
+
+if (exchanged.err) {
+  if (exchanged.err instanceof InvalidAuthorizationCodeError) {
+    // handle invalid code error
+  }
+  else {
+    // handle other errors
+  }
+}
+
+const { access, refresh } = exchanged.tokens
+```
+</Segment>
+### refresh
+<Segment>
+<Section type="parameters">
+<InlineSection>
+**Type** <code class="primitive">(refresh: <code class="primitive">string</code>, opts?: [<code class="type">RefreshOptions</code>](#refreshoptions)) => <code class="primitive">Promise</code><code class="symbol">&lt;</code>[<code class="type">RefreshSuccess</code>](#refreshsuccess)<code class="symbol"> | </code>[<code class="type">RefreshError</code>](#refresherror)<code class="symbol">&gt;</code></code>
+</InlineSection>
+</Section>
+Refreshes the tokens if they have expired. This is used in an SPA app to maintain the
+session, without logging the user out.
+
+```ts
+const next = await client.refresh(<refresh_token>)
+```
+
+Can optionally take the access token as well. If passed in, this will skip the refresh
+if the access token is still valid.
+
+```ts
+const next = await client.refresh(<refresh_token>, { access: <access_token> })
+```
+
+This returns the refreshed tokens only if they've been refreshed.
+
+```ts
+if (!next.err) {
+  // tokens are still valid
+}
+if (next.tokens) {
+  const { access, refresh } = next.tokens
+}
+```
+
+Or if it fails, it returns an error that you can handle depending on the error.
+
+```ts
+import { InvalidRefreshTokenError } from "@openauthjs/openauth/error"
+
+if (next.err) {
+  if (next.err instanceof InvalidRefreshTokenError) {
+    // handle invalid refresh token error
+  }
+  else {
+    // handle other errors
+  }
+}
+```
+</Segment>
+### verify
+<Segment>
+<Section type="parameters">
+<InlineSection>
+**Type** <code class="primitive">(subjects: [<code class="type">SubjectSchema</code>](/docs/subject#subjectschema), token: <code class="primitive">string</code>, options?: [<code class="type">VerifyOptions</code>](#verifyoptions)) => <code class="primitive">Promise</code><code class="symbol">&lt;</code>[<code class="type">VerifyError</code>](#verifyerror)<code class="symbol"> | </code>[<code class="type">VerifyResult</code>](#verifyresult)<code class="symbol">&gt;</code></code>
+</InlineSection>
+</Section>
+Verify the token in the incoming request.
+
+This is typically used for SSR sites where the token is stored in an HTTP only cookie. And
+is passed to the server on every request.
+
+```ts
+const verified = await client.verify(<subjects>, <token>)
+```
+
+This takes the subjects that you had previously defined when creating the issuer.
+
+:::tip
+If the refresh token is passed in, it'll automatically refresh the access token.
+:::
+
+This can optionally take the refresh token as well. If passed in, it'll automatically
+refresh the access token if it has expired.
+
+```ts
+const verified = await client.verify(<subjects>, <token>, { refresh: <refresh_token> })
+```
+
+This returns the decoded subjects from the access token. And the tokens if they've been
+refreshed.
+
+```ts
+// based on the subjects you defined earlier
+console.log(verified.subject.properties.userID)
+
+if (verified.tokens) {
+  const { access, refresh } = verified.tokens
+}
+```
+
+Or if it fails, it returns an error that you can handle depending on the error.
+
+```ts
+import { InvalidRefreshTokenError } from "@openauthjs/openauth/error"
+
+if (verified.err) {
+  if (verified.err instanceof InvalidRefreshTokenError) {
+    // handle invalid refresh token error
+  }
+  else {
+    // handle other errors
+  }
+}
+```
 </Segment>
 ## AuthorizeOptions
 <Segment>
@@ -154,218 +357,10 @@ location.href = url
 <Segment>
 <Section type="parameters">
 <InlineSection>
-**Type** <code class="symbol">&lcub; </code><code class="key">state</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">verifier</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol"> &rcub;</code>
+**Type** <code class="primitive">Object</code>
 </InlineSection>
 </Section>
 The challenge that you can use to verify the code.
-</Segment>
-## Client
-<Segment>
-<Section type="parameters">
-- <p>[<code class="key">authorize</code>](#client.authorize) <code class="primitive">(redirectURI: <code class="primitive">string</code>, response: <code class="symbol">&ldquo;</code><code class="primitive">code</code><code class="symbol">&rdquo;</code><code class="symbol"> | </code><code class="symbol">&ldquo;</code><code class="primitive">token</code><code class="symbol">&rdquo;</code>, opts?: [<code class="type">AuthorizeOptions</code>](#authorizeoptions)) => <code class="primitive">Promise</code><code class="symbol">&lt;</code>[<code class="type">AuthorizeResult</code>](#authorizeresult)<code class="symbol">&gt;</code></code></p>
-- <p>[<code class="key">exchange</code>](#client.exchange) <code class="primitive">(code: <code class="primitive">string</code>, redirectURI: <code class="primitive">string</code>, verifier?: <code class="primitive">string</code>) => <code class="primitive">Promise</code><code class="symbol">&lt;</code>[<code class="type">ExchangeSuccess</code>](#exchangesuccess)<code class="symbol"> | </code>[<code class="type">ExchangeError</code>](#exchangeerror)<code class="symbol">&gt;</code></code></p>
-- <p>[<code class="key">refresh</code>](#client.refresh) <code class="primitive">(refresh: <code class="primitive">string</code>, opts?: [<code class="type">RefreshOptions</code>](#refreshoptions)) => <code class="primitive">Promise</code><code class="symbol">&lt;</code>[<code class="type">RefreshSuccess</code>](#refreshsuccess)<code class="symbol"> | </code>[<code class="type">RefreshError</code>](#refresherror)<code class="symbol">&gt;</code></code></p>
-- <p>[<code class="key">verify</code>](#client.verify) <code class="primitive">(subjects: <code class="primitive">any</code>, token: <code class="primitive">string</code>, options?: [<code class="type">VerifyOptions</code>](#verifyoptions)) => <code class="primitive">Promise</code><code class="symbol">&lt;</code>[<code class="type">VerifyError</code>](#verifyerror)<code class="symbol"> | </code>[<code class="type">VerifyResult</code>](#verifyresult)<code class="symbol">&gt;</code></code></p>
-</Section>
-An instance of the OpenAuth client contains the following methods.
-</Segment>
-<NestedTitle id="client.authorize" Tag="h4" parent="Client.">authorize</NestedTitle>
-<Segment>
-<Section type="parameters">
-<InlineSection>
-**Type** <code class="primitive">(redirectURI: <code class="primitive">string</code>, response: <code class="symbol">&ldquo;</code><code class="primitive">code</code><code class="symbol">&rdquo;</code><code class="symbol"> | </code><code class="symbol">&ldquo;</code><code class="primitive">token</code><code class="symbol">&rdquo;</code>, opts?: [<code class="type">AuthorizeOptions</code>](#authorizeoptions)) => <code class="primitive">Promise</code><code class="symbol">&lt;</code>[<code class="type">AuthorizeResult</code>](#authorizeresult)<code class="symbol">&gt;</code></code>
-</InlineSection>
-</Section>
-Start the autorization flow. For example, in SSR sites.
-
-```ts
-const { url } = await client.authorize(<redirect_uri>, "code")
-```
-
-This takes a redirect URI and the type of flow you want to use. The redirect URI is the
-location where the user will be redirected to after the flow is complete.
-
-Supports both the _code_ and _token_ flows. We recommend using the _code_ flow as it's more
-secure.
-
-:::tip
-This returns a URL to redirect the user to. This starts the OAuth flow.
-:::
-
-This returns a URL to the auth server. You can redirect the user to the URL to start the
-OAuth flow.
-
-For SPA apps, we recommend using the PKCE flow.
-
-```ts {4}
-const { challenge, url } = await client.authorize(
-  <redirect_uri>,
-  "code",
-  { pkce: true }
-)
-```
-
-This returns a redirect URL and a challenge that you need to use later to verify the code.
-</Segment>
-<NestedTitle id="client.exchange" Tag="h4" parent="Client.">exchange</NestedTitle>
-<Segment>
-<Section type="parameters">
-<InlineSection>
-**Type** <code class="primitive">(code: <code class="primitive">string</code>, redirectURI: <code class="primitive">string</code>, verifier?: <code class="primitive">string</code>) => <code class="primitive">Promise</code><code class="symbol">&lt;</code>[<code class="type">ExchangeSuccess</code>](#exchangesuccess)<code class="symbol"> | </code>[<code class="type">ExchangeError</code>](#exchangeerror)<code class="symbol">&gt;</code></code>
-</InlineSection>
-</Section>
-Exchange the code for access and refresh tokens.
-
-```ts
-const exchanged = await client.exchange(<code>, <redirect_uri>)
-```
-
-You call this after the user has been redirected back to your app after the OAuth flow.
-
-:::tip
-For SSR sites, the code is returned in the query parameter.
-:::
-
-So the code comes from the query parameter in the redirect URI. The redirect URI here is
-the one that you passed in to the `authorize` call when starting the flow.
-
-:::tip
-For SPA sites, the code is returned through the URL hash.
-:::
-
-If you used the PKCE flow for an SPA app, the code is returned as a part of the redirect URL
-hash.
-
-```ts {4}
-const exchanged = await client.exchange(
-  <code>,
-  <redirect_uri>,
-  <challenge.verifier>
-)
-```
-
-You also need to pass in the previously stored challenge verifier.
-
-This method returns the access and refresh tokens. Or if it fails, it returns an error that
-you can handle depending on the error.
-
-```ts
-import { InvalidAuthorizationCodeError } from "@openauthjs/openauth/error"
-
-if (exchanged.err) {
-  if (exchanged.err instanceof InvalidAuthorizationCodeError) {
-    // handle invalid code error
-  }
-  else {
-    // handle other errors
-  }
-}
-
-const { access, refresh } = exchanged.tokens
-```
-</Segment>
-<NestedTitle id="client.refresh" Tag="h4" parent="Client.">refresh</NestedTitle>
-<Segment>
-<Section type="parameters">
-<InlineSection>
-**Type** <code class="primitive">(refresh: <code class="primitive">string</code>, opts?: [<code class="type">RefreshOptions</code>](#refreshoptions)) => <code class="primitive">Promise</code><code class="symbol">&lt;</code>[<code class="type">RefreshSuccess</code>](#refreshsuccess)<code class="symbol"> | </code>[<code class="type">RefreshError</code>](#refresherror)<code class="symbol">&gt;</code></code>
-</InlineSection>
-</Section>
-Refreshes the tokens if they have expired. This is used in an SPA app to maintain the
-session, without logging the user out.
-
-```ts
-const next = await client.refresh(<refresh_token>)
-```
-
-Can optionally take the access token as well. If passed in, this will skip the refresh
-if the access token is still valid.
-
-```ts
-const next = await client.refresh(<refresh_token>, { access: <access_token> })
-```
-
-This returns the refreshed tokens only if they've been refreshed.
-
-```ts
-if (!next.err) {
-  // tokens are still valid
-}
-if (next.tokens) {
-  const { access, refresh } = next.tokens
-}
-```
-
-Or if it fails, it returns an error that you can handle depending on the error.
-
-```ts
-import { InvalidRefreshTokenError } from "@openauthjs/openauth/error"
-
-if (next.err) {
-  if (next.err instanceof InvalidRefreshTokenError) {
-    // handle invalid refresh token error
-  }
-  else {
-    // handle other errors
-  }
-}
-```
-</Segment>
-<NestedTitle id="client.verify" Tag="h4" parent="Client.">verify</NestedTitle>
-<Segment>
-<Section type="parameters">
-<InlineSection>
-**Type** <code class="primitive">(subjects: <code class="primitive">any</code>, token: <code class="primitive">string</code>, options?: [<code class="type">VerifyOptions</code>](#verifyoptions)) => <code class="primitive">Promise</code><code class="symbol">&lt;</code>[<code class="type">VerifyError</code>](#verifyerror)<code class="symbol"> | </code>[<code class="type">VerifyResult</code>](#verifyresult)<code class="symbol">&gt;</code></code>
-</InlineSection>
-</Section>
-Verify the token in the incoming request.
-
-This is typically used for SSR sites where the token is stored in an HTTP only cookie. And
-is passed to the server on every request.
-
-```ts
-const verified = await client.verify(<subjects>, <token>)
-```
-
-This takes the subjects that you had previously defined when creating the issuer.
-
-:::tip
-If the refresh token is passed in, it'll automatically refresh the access token.
-:::
-
-This can optionally take the refresh token as well. If passed in, it'll automatically
-refresh the access token if it has expired.
-
-```ts
-const verified = await client.verify(<subjects>, <token>, { refresh: <refresh_token> })
-```
-
-This returns the decoded subjects from the access token. And the tokens if they've been
-refreshed.
-
-```ts
-// based on the subjects you defined earlier
-console.log(verified.subject.properties.userID)
-
-if (verified.tokens) {
-  const { access, refresh } = verified.tokens
-}
-```
-
-Or if it fails, it returns an error that you can handle depending on the error.
-
-```ts
-import { InvalidRefreshTokenError } from "@openauthjs/openauth/error"
-
-if (verified.err) {
-  if (verified.err instanceof InvalidRefreshTokenError) {
-    // handle invalid refresh token error
-  }
-  else {
-    // handle other errors
-  }
-}
-```
 </Segment>
 ## ClientInput
 <Segment>
@@ -411,7 +406,7 @@ want the client to use it too.
 **Type** <code class="primitive">string</code>
 </InlineSection>
 </Section>
-The URL of your authorization server.
+The URL of your OpenAuth server.
 ```ts
 {
   issuer: "https://auth.myserver.com"
@@ -610,7 +605,7 @@ If passed in, this will automatically refresh the access token if it has expired
 <Segment>
 <Section type="parameters">
 - <p>[<code class="key">err?</code>](#verifyresult.err) <code class="primitive">undefined</code></p>
-- <p>[<code class="key">subject</code>](#verifyresult.subject) <code class="primitive">indexedAccess</code></p>
+- <p>[<code class="key">subject</code>](#verifyresult.subject) <code class="type">Subject</code></p>
 - <p>[<code class="key">tokens?</code>](#verifyresult.tokens) [<code class="type">Tokens</code>](#tokens)</p>
 </Section>
 </Segment>
@@ -627,7 +622,7 @@ This is always `undefined` when the verify is successful.
 <Segment>
 <Section type="parameters">
 <InlineSection>
-**Type** <code class="primitive">indexedAccess</code>
+**Type** <code class="type">Subject</code>
 </InlineSection>
 </Section>
 The decoded subjects from the access token.

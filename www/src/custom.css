@@ -108,6 +108,11 @@ starlight-theme-select {
 body > .page > .main-frame .main-pane > main > .content-panel + .content-panel {
   border-top: 1px solid var(--sl-color-white);
 }
+@media (min-width: 72rem) {
+  body > .page > .main-frame .main-pane > main > .content-panel .sl-container {
+    margin-inline: auto;
+  }
+}
 
 
 /**

@@ -131,7 +131,7 @@ const DEFAULT_COPY = {
     | PasswordChangeError["type"]}`]: string
 } & Record<string, string>
 
-export type PasswordUICopy = typeof DEFAULT_COPY
+type PasswordUICopy = typeof DEFAULT_COPY
 
 /**
  * Configure the password UI.

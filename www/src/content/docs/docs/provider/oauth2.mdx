@@ -8,6 +8,7 @@ import Segment from '../../../../components/tsdoc/Segment.astro';
 import Section from '../../../../components/tsdoc/Section.astro';
 import NestedTitle from '../../../../components/tsdoc/NestedTitle.astro';
 import InlineSection from '../../../../components/tsdoc/InlineSection.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <div class="tsdoc">
 <Section type="about">
@@ -52,7 +53,7 @@ Oauth2Provider(config)
 <Section type="parameters">
 - <p>[<code class="key">clientID</code>](#oauth2config.clientid) <code class="primitive">string</code></p>
 - <p>[<code class="key">clientSecret</code>](#oauth2config.clientsecret) <code class="primitive">string</code></p>
-- <p>[<code class="key">endpoint</code>](#oauth2config.endpoint) <code class="symbol">&lcub; </code><code class="key">authorization</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">token</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol"> &rcub;</code></p>
+- <p>[<code class="key">endpoint</code>](#oauth2config.endpoint) <code class="primitive">Object</code></p>
   - <p>[<code class="key">authorization</code>](#endpoint.authorization) <code class="primitive">string</code></p>
   - <p>[<code class="key">token</code>](#endpoint.token) <code class="primitive">string</code></p>
 - <p>[<code class="key">query?</code>](#oauth2config.query) <code class="primitive">Record</code><code class="symbol">&lt;</code><code class="primitive">string</code>, <code class="primitive">string</code><code class="symbol">&gt;</code></p>
@@ -95,7 +96,7 @@ This is a private key that's used to authenticate your app. It should be kept se
 <Segment>
 <Section type="parameters">
 <InlineSection>
-**Type** <code class="symbol">&lcub; </code><code class="key">authorization</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">token</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol"> &rcub;</code>
+**Type** <code class="primitive">Object</code>
 </InlineSection>
 </Section>
 The URLs of the authorization and token endpoints.

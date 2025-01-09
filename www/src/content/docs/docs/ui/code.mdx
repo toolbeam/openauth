@@ -8,6 +8,7 @@ import Segment from '../../../../components/tsdoc/Segment.astro';
 import Section from '../../../../components/tsdoc/Section.astro';
 import NestedTitle from '../../../../components/tsdoc/NestedTitle.astro';
 import InlineSection from '../../../../components/tsdoc/InlineSection.astro';
+import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <div class="tsdoc">
 <Section type="about">
@@ -55,14 +56,14 @@ Creates a UI for the Code provider flow.
 <Segment>
 <Section type="parameters">
 <InlineSection>
-**Type** <code class="primitive">query</code>
+**Type** <code class="primitive">any</code>
 </InlineSection>
 </Section>
 </Segment>
 ## CodeUIOptions
 <Segment>
 <Section type="parameters">
-- <p>[<code class="key">copy?</code>](#codeuioptions.copy) <code class="primitive">Partial</code><code class="symbol">&lt;</code><code class="symbol">&lcub; </code><code class="key">button_continue</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">code_didnt_get</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">code_info</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">code_invalid</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">code_placeholder</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">code_resend</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">code_resent</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">code_sent</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">email_invalid</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">email_placeholder</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol"> &rcub;</code><code class="symbol">&gt;</code></p>
+- <p>[<code class="key">copy?</code>](#codeuioptions.copy) <code class="primitive">Object</code></p>
   - <p>[<code class="key">button_continue</code>](#copy.button_continue) <code class="primitive">string</code></p>
   - <p>[<code class="key">code_didnt_get</code>](#copy.code_didnt_get) <code class="primitive">string</code></p>
   - <p>[<code class="key">code_info</code>](#copy.code_info) <code class="primitive">string</code></p>
@@ -82,7 +83,7 @@ Configure the password UI.
 <Segment>
 <Section type="parameters">
 <InlineSection>
-**Type** <code class="primitive">Partial</code><code class="symbol">&lt;</code><code class="symbol">&lcub; </code><code class="key">button_continue</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">code_didnt_get</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">code_info</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">code_invalid</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">code_placeholder</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">code_resend</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">code_resent</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">code_sent</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">email_invalid</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol">, </code><code class="key">email_placeholder</code><code class="symbol">&colon; </code><code class="primitive">string</code><code class="symbol"> &rcub;</code><code class="symbol">&gt;</code>
+**Type** <code class="primitive">Object</code>
 </InlineSection>
 </Section>
 Custom copy for the UI.
@@ -94,6 +95,10 @@ Custom copy for the UI.
 **Type** <code class="primitive">string</code>
 </InlineSection>
 </Section>
+
+<InlineSection>
+**Default** <code class="symbol">&ldquo;</code><code class="primitive">Continue</code><code class="symbol">&rdquo;</code>
+</InlineSection>
 Copy for the continue button.
 </Segment>
 <NestedTitle id="copy.code_didnt_get" Tag="h5" parent="CodeUIOptions.copy.">code_didnt_get</NestedTitle>
@@ -103,6 +108,10 @@ Copy for the continue button.
 **Type** <code class="primitive">string</code>
 </InlineSection>
 </Section>
+
+<InlineSection>
+**Default** <code class="symbol">&ldquo;</code><code class="primitive">Didn't get code?</code><code class="symbol">&rdquo;</code>
+</InlineSection>
 Copy for the link to resend the code.
 </Segment>
 <NestedTitle id="copy.code_info" Tag="h5" parent="CodeUIOptions.copy.">code_info</NestedTitle>
@@ -112,6 +121,10 @@ Copy for the link to resend the code.
 **Type** <code class="primitive">string</code>
 </InlineSection>
 </Section>
+
+<InlineSection>
+**Default** <code class="symbol">&ldquo;</code><code class="primitive">We'll send a pin code to your email</code><code class="symbol">&rdquo;</code>
+</InlineSection>
 Copy informing that the pin code will be emailed.
 </Segment>
 <NestedTitle id="copy.code_invalid" Tag="h5" parent="CodeUIOptions.copy.">code_invalid</NestedTitle>
@@ -121,6 +134,10 @@ Copy informing that the pin code will be emailed.
 **Type** <code class="primitive">string</code>
 </InlineSection>
 </Section>
+
+<InlineSection>
+**Default** <code class="symbol">&ldquo;</code><code class="primitive">Invalid code</code><code class="symbol">&rdquo;</code>
+</InlineSection>
 Error message when the code is invalid.
 </Segment>
 <NestedTitle id="copy.code_placeholder" Tag="h5" parent="CodeUIOptions.copy.">code_placeholder</NestedTitle>
@@ -130,6 +147,10 @@ Error message when the code is invalid.
 **Type** <code class="primitive">string</code>
 </InlineSection>
 </Section>
+
+<InlineSection>
+**Default** <code class="symbol">&ldquo;</code><code class="primitive">Code</code><code class="symbol">&rdquo;</code>
+</InlineSection>
 Copy for the pin code input.
 </Segment>
 <NestedTitle id="copy.code_resend" Tag="h5" parent="CodeUIOptions.copy.">code_resend</NestedTitle>
@@ -139,6 +160,10 @@ Copy for the pin code input.
 **Type** <code class="primitive">string</code>
 </InlineSection>
 </Section>
+
+<InlineSection>
+**Default** <code class="symbol">&ldquo;</code><code class="primitive">Resend</code><code class="symbol">&rdquo;</code>
+</InlineSection>
 Copy for the resend button.
 </Segment>
 <NestedTitle id="copy.code_resent" Tag="h5" parent="CodeUIOptions.copy.">code_resent</NestedTitle>
@@ -148,6 +173,10 @@ Copy for the resend button.
 **Type** <code class="primitive">string</code>
 </InlineSection>
 </Section>
+
+<InlineSection>
+**Default** <code class="symbol">&ldquo;</code><code class="primitive">Code resent to </code><code class="symbol">&rdquo;</code>
+</InlineSection>
 Copy for when the code was resent.
 </Segment>
 <NestedTitle id="copy.code_sent" Tag="h5" parent="CodeUIOptions.copy.">code_sent</NestedTitle>
@@ -157,6 +186,10 @@ Copy for when the code was resent.
 **Type** <code class="primitive">string</code>
 </InlineSection>
 </Section>
+
+<InlineSection>
+**Default** <code class="symbol">&ldquo;</code><code class="primitive">Code sent to </code><code class="symbol">&rdquo;</code>
+</InlineSection>
 Copy for when the code was sent.
 </Segment>
 <NestedTitle id="copy.email_invalid" Tag="h5" parent="CodeUIOptions.copy.">email_invalid</NestedTitle>
@@ -166,6 +199,10 @@ Copy for when the code was sent.
 **Type** <code class="primitive">string</code>
 </InlineSection>
 </Section>
+
+<InlineSection>
+**Default** <code class="symbol">&ldquo;</code><code class="primitive">Email address is not valid</code><code class="symbol">&rdquo;</code>
+</InlineSection>
 Error message when the email is invalid.
 </Segment>
 <NestedTitle id="copy.email_placeholder" Tag="h5" parent="CodeUIOptions.copy.">email_placeholder</NestedTitle>
@@ -175,6 +212,10 @@ Error message when the email is invalid.
 **Type** <code class="primitive">string</code>
 </InlineSection>
 </Section>
+
+<InlineSection>
+**Default** <code class="symbol">&ldquo;</code><code class="primitive">Email</code><code class="symbol">&rdquo;</code>
+</InlineSection>
 Copy for the email input.
 </Segment>
 <NestedTitle id="codeuioptions.mode" Tag="h4" parent="CodeUIOptions.">mode?</NestedTitle>
@@ -197,10 +238,13 @@ The mode to use for the input.
 **Type** <code class="primitive">(claims: <code class="primitive">Record</code><code class="symbol">&lt;</code><code class="primitive">string</code>, <code class="primitive">string</code><code class="symbol">&gt;</code>, code: <code class="primitive">string</code>) => <code class="primitive">Promise</code><code class="symbol">&lt;</code><code class="primitive">void</code><code class="symbol">&gt;</code></code>
 </InlineSection>
 </Section>
-Callback to send the confirmation code to the user.
+Callback to send the pin code to the user.
+
+The `claims` object contains the email or phone number of the user. You can send the code
+using this.
 ```ts
 async (claims, code) => {
-  // Send an email with the code
+  // Send the code via the claim
 }
 ```
 </Segment>

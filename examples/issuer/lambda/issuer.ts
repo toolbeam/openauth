@@ -1,8 +1,6 @@
 import { issuer } from "@openauthjs/openauth"
 import { handle } from "hono/aws-lambda"
-import { DynamoStorage } from "@openauthjs/openauth/storage/dynamo"
 import { subjects } from "../../subjects.js"
-import { Resource } from "sst"
 import { PasswordUI } from "@openauthjs/openauth/ui/password"
 import { PasswordProvider } from "@openauthjs/openauth/provider/password"
 
@@ -13,9 +11,6 @@ async function getUser(email: string) {
 }
 
 const app = issuer({
-  storage: DynamoStorage({
-    table: Resource.LambdaAuthTable.name,
-  }),
   subjects,
   providers: {
     password: PasswordProvider(
