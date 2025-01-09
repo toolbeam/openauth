@@ -1,5 +1,11 @@
 # @openauthjs/openauth
 
+## 0.3.4
+
+### Patch Changes
+
+- 34ca2b0: remove catch all route so hono instance can be extended
+
 ## 0.3.3
 
 ### Patch Changes
