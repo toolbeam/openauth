@@ -1,5 +1,11 @@
 # @openauthjs/openauth
 
+## 0.3.5
+
+### Patch Changes
+
+- b22fb30: fix: enable CORS on well-known routes
+
 ## 0.3.4
 
 ### Patch Changes
