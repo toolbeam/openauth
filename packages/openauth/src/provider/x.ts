@@ -41,5 +41,6 @@ export function XProvider(config: XProviderConfig) {
       authorization: "https://twitter.com/i/oauth2/authorize",
       token: "https://api.x.com/2/oauth2/token",
     },
+    pkce: true,
   })
 }

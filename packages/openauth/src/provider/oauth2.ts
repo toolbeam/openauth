@@ -23,6 +23,7 @@
  */
 
 import { OauthError } from "../error.js"
+import { generatePKCE } from "../pkce.js"
 import { getRelativeUrl } from "../util.js"
 import { Provider } from "./provider.js"
 
@@ -92,6 +93,12 @@ export interface Oauth2Config {
    */
   scopes: string[]
   /**
+   * Whether to use PKCE (Proof Key for Code Exchange) for the authorization code flow.
+   * Some providers like x.com require this.
+   * @default false
+   */
+  pkce?: boolean
+  /**
    * Any additional parameters that you want to pass to the authorization endpoint.
    * @example
    * ```ts
@@ -124,6 +131,7 @@ export interface Oauth2Token {
 interface ProviderState {
   state: string
   redirect: string
+  codeVerifier?: string
 }
 
 export function Oauth2Provider(
@@ -135,9 +143,11 @@ export function Oauth2Provider(
     init(routes, ctx) {
       routes.get("/authorize", async (c) => {
         const state = crypto.randomUUID()
+        const pkce = config.pkce ? await generatePKCE() : undefined
         await ctx.set<ProviderState>(c, "provider", 60 * 10, {
           state,
           redirect: getRelativeUrl(c, "./callback"),
+          codeVerifier: pkce?.verifier
         })
         const authorization = new URL(config.endpoint.authorization)
         authorization.searchParams.set("client_id", config.clientID)
@@ -148,6 +158,10 @@ export function Oauth2Provider(
         authorization.searchParams.set("response_type", "code")
         authorization.searchParams.set("state", state)
         authorization.searchParams.set("scope", config.scopes.join(" "))
+        if (pkce) {
+          authorization.searchParams.set("code_challenge", pkce.challenge)
+          authorization.searchParams.set("code_challenge_method", pkce.method)
+        }
         for (const [key, value] of Object.entries(query)) {
           authorization.searchParams.set(key, value)
         }
@@ -172,6 +186,7 @@ export function Oauth2Provider(
           code,
           grant_type: "authorization_code",
           redirect_uri: provider.redirect,
+          ...(provider.codeVerifier ? { code_verifier: provider.codeVerifier } : {})
         })
         const json: any = await fetch(config.endpoint.token, {
           method: "POST",
