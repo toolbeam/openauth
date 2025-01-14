@@ -1,5 +1,11 @@
 # @openauthjs/openauth
 
+## 0.3.6
+
+### Patch Changes
+
+- f7bd440: Adding a new default openauth theme
+
 ## 0.3.5
 
 ### Patch Changes
