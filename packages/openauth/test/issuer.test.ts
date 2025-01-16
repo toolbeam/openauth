@@ -1,17 +1,17 @@
 import {
-  expect,
-  test,
-  setSystemTime,
-  describe,
-  beforeEach,
   afterEach,
+  beforeEach,
+  describe,
+  expect,
+  setSystemTime,
+  test,
 } from "bun:test"
 import { object, string } from "valibot"
-import { issuer } from "../src/issuer.js"
 import { createClient } from "../src/client.js"
-import { createSubjects } from "../src/subject.js"
-import { MemoryStorage } from "../src/storage/memory.js"
+import { issuer } from "../src/issuer.js"
 import { Provider } from "../src/provider/provider.js"
+import { MemoryStorage } from "../src/storage/memory.js"
+import { createSubjects } from "../src/subject.js"
 
 const subjects = createSubjects({
   user: object({
@@ -72,17 +72,19 @@ afterEach(() => {
 })
 
 describe("code flow", () => {
-  test("success", async () => {
-    const client = createClient({
-      issuer: "https://auth.example.com",
-      clientID: "123",
-      fetch: (a, b) => Promise.resolve(auth.request(a, b)),
-    })
+  const client = createClient({
+    issuer: "https://auth.example.com",
+    clientID: "123",
+    fetch: (a, b) => Promise.resolve(auth.request(a, b)),
+  })
+
+  test.each([undefined, "foo"])("success", async (scope) => {
     const { challenge, url } = await client.authorize(
       "https://client.example.com/callback",
       "code",
       {
         pkce: true,
+        scopes: scope?.split(" "),
       },
     )
     let response = await auth.request(url)
@@ -110,22 +112,27 @@ describe("code flow", () => {
     })
     const verified = await client.verify(subjects, tokens.access)
     if (verified.err) throw verified.err
-    expect(verified.subject).toStrictEqual({
-      type: "user",
-      properties: {
-        userID: "123",
+    expect(verified).toStrictEqual({
+      aud: "123",
+      subject: {
+        type: "user",
+        properties: {
+          userID: "123",
+        },
       },
+      ...(scope ? { scopes: scope.split(" ") } : {}),
     })
   })
 })
 
 describe("client credentials flow", () => {
-  test("success", async () => {
-    const client = createClient({
-      issuer: "https://auth.example.com",
-      clientID: "123",
-      fetch: (a, b) => Promise.resolve(auth.request(a, b)),
-    })
+  const client = createClient({
+    issuer: "https://auth.example.com",
+    clientID: "123",
+    fetch: (a, b) => Promise.resolve(auth.request(a, b)),
+  })
+
+  test.each([undefined, "foo"])("success", async (scope) => {
     const response = await auth.request("https://auth.example.com/token", {
       method: "POST",
       headers: {
@@ -136,6 +143,7 @@ describe("client credentials flow", () => {
         provider: "dummy",
         client_id: "myuser",
         client_secret: "mypass",
+        ...(scope ? { scope } : {}),
       }).toString(),
     })
     expect(response.status).toBe(200)
@@ -145,6 +153,7 @@ describe("client credentials flow", () => {
       refresh_token: expectNonEmptyString,
     })
     const verified = await client.verify(subjects, tokens.access_token)
+    if (verified.err) throw verified.err
     expect(verified).toStrictEqual({
       aud: "myuser",
       subject: {
@@ -153,6 +162,7 @@ describe("client credentials flow", () => {
           userID: "123",
         },
       },
+      ...(scope ? { scopes: scope.split(" ") } : {}),
     })
   })
 })
@@ -161,12 +171,13 @@ describe("refresh token", () => {
   let tokens: { access: string; refresh: string }
   let client: ReturnType<typeof createClient>
 
-  const generateTokens = async (issuer: typeof auth) => {
+  const generateTokens = async (issuer: typeof auth, scopes?: string[]) => {
     const { challenge, url } = await client.authorize(
       "https://client.example.com/callback",
       "code",
       {
         pkce: true,
+        scopes,
       },
     )
     let response = await issuer.request(url)
@@ -198,6 +209,7 @@ describe("refresh token", () => {
   const requestRefreshToken = async (
     refresh_token: string,
     issuer?: typeof auth,
+    scope?: string,
   ) =>
     (issuer ?? auth).request("https://auth.example.com/token", {
       method: "POST",
@@ -207,6 +219,7 @@ describe("refresh token", () => {
       body: new URLSearchParams({
         grant_type: "refresh_token",
         ...(refresh_token ? { refresh_token } : {}),
+        ...(scope ? { scope } : {}),
       }).toString(),
     })
 
@@ -338,6 +351,31 @@ describe("refresh token", () => {
     expect(response.status).toBe(400)
     const reused = await response.json()
     expect(reused.error).toBe("invalid_request")
+  })
+
+  test("with ignored scope", async () => {
+    let response = await requestRefreshToken(tokens.refresh, undefined, "foo")
+    expect(response.status).toBe(200)
+    const reused = await response.json()
+    expect(reused.scope).toBeUndefined()
+  })
+
+  test("with scope", async () => {
+    tokens = await generateTokens(auth, ["foo"])
+
+    let response = await requestRefreshToken(tokens.refresh, undefined, "foo")
+    expect(response.status).toBe(200)
+    const reused = await response.json()
+    expect(reused.scope).toBe("foo")
+  })
+
+  test("with new scopes", async () => {
+    tokens = await generateTokens(auth, ["foo", "bar"])
+
+    let response = await requestRefreshToken(tokens.refresh, undefined, "foo x")
+    expect(response.status).toBe(200)
+    const reused = await response.json()
+    expect(reused.scope).toBe("foo")
   })
 })
 

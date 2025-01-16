@@ -124,13 +124,13 @@
  *
  * @packageDocumentation
  */
+import type { v1 } from "@standard-schema/spec"
+import { Context } from "hono"
+import { handle as awsHandle } from "hono/aws-lambda"
+import { deleteCookie, getCookie, setCookie } from "hono/cookie"
+import { Hono } from "hono/tiny"
 import { Provider, ProviderOptions } from "./provider/provider.js"
 import { SubjectPayload, SubjectSchema } from "./subject.js"
-import { Hono } from "hono/tiny"
-import { handle as awsHandle } from "hono/aws-lambda"
-import { Context } from "hono"
-import { deleteCookie, getCookie, setCookie } from "hono/cookie"
-import type { v1 } from "@standard-schema/spec"
 
 /**
  * Sets the subject payload in the JWT token and returns the response.
@@ -172,6 +172,7 @@ export interface AuthorizationState {
   state: string
   client_id: string
   audience?: string
+  scopes?: string[]
   pkce?: {
     challenge: string
     method: "S256"
@@ -185,23 +186,24 @@ export type Prettify<T> = {
   [K in keyof T]: T[K]
 } & {}
 
+import { cors } from "hono/cors"
+import { logger } from "hono/logger"
+import { compactDecrypt, CompactEncrypt, jwtVerify, SignJWT } from "jose"
 import {
   MissingParameterError,
   OauthError,
   UnauthorizedClientError,
   UnknownStateError,
 } from "./error.js"
-import { compactDecrypt, CompactEncrypt, jwtVerify, SignJWT } from "jose"
-import { Storage, StorageAdapter } from "./storage/storage.js"
 import { encryptionKeys, legacySigningKeys, signingKeys } from "./keys.js"
 import { validatePKCE } from "./pkce.js"
+import { parseScopes, validateScopes } from "./scopes.js"
+import { DynamoStorage } from "./storage/dynamo.js"
+import { MemoryStorage } from "./storage/memory.js"
+import { Storage, StorageAdapter } from "./storage/storage.js"
 import { Select } from "./ui/select.js"
 import { setTheme, Theme } from "./ui/theme.js"
 import { getRelativeUrl, isDomainMatch, lazy } from "./util.js"
-import { DynamoStorage } from "./storage/dynamo.js"
-import { MemoryStorage } from "./storage/memory.js"
-import { cors } from "hono/cors"
-import { logger } from "hono/logger"
 
 /** @internal */
 export const aws = awsHandle
@@ -281,6 +283,17 @@ export interface IssuerInput<
    * ```
    */
   providers: Providers
+  /**
+   * Array containing a list of the OAuth 2.0 [RFC6749] "scope" values that this authorization server advertises.
+   *
+   * @example
+   * ```ts
+   * {
+   *   scopes_supported: ["read", "write"]
+   * }
+   * ```
+   */
+  scopes_supported?: string[]
   /**
    * The theme you want to use for the UI.
    *
@@ -530,6 +543,7 @@ export function issuer<
                 type: type as string,
                 properties,
                 clientID: authorization.client_id,
+                scopes: authorization.scopes,
                 ttl: {
                   access: subjectOpts?.ttl?.access ?? ttlAccess,
                   refresh: subjectOpts?.ttl?.refresh ?? ttlRefresh,
@@ -555,6 +569,7 @@ export function issuer<
                   redirectURI: authorization.redirect_uri,
                   clientID: authorization.client_id,
                   pkce: authorization.pkce,
+                  scopes: authorization.scopes,
                   ttl: {
                     access: subjectOpts?.ttl?.access ?? ttlAccess,
                     refresh: subjectOpts?.ttl?.refresh ?? ttlRefresh,
@@ -659,6 +674,7 @@ export function issuer<
       }
       timeUsed?: number
       nextToken?: string
+      scopes?: string[]
     },
     opts?: {
       generateRefreshToken?: boolean
@@ -693,6 +709,7 @@ export function issuer<
         aud: value.clientID,
         iss: issuer(ctx),
         sub: value.subject,
+        scopes: value.scopes,
       })
         .setExpirationTime(Math.floor(accessTimeUsed + value.ttl.access))
         .setProtectedHeader(
@@ -782,6 +799,7 @@ export function issuer<
         token_endpoint: `${iss}/token`,
         jwks_uri: `${iss}/.well-known/jwks.json`,
         response_types_supported: ["code", "token"],
+        scopes_supported: input.scopes_supported,
       })
     },
   )
@@ -797,6 +815,7 @@ export function issuer<
     async (c) => {
       const form = await c.req.formData()
       const grantType = form.get("grant_type")
+      const scope = form.get("scope") as string | null
 
       if (grantType === "authorization_code") {
         const code = form.get("code")
@@ -815,6 +834,7 @@ export function issuer<
           clientID: string
           redirectURI: string
           subject: string
+          scopes?: string[]
           ttl: {
             access: number
             refresh: number
@@ -878,11 +898,13 @@ export function issuer<
             )
           }
         }
+        payload.scopes = validateScopes(scope, payload.scopes)
         const tokens = await generateTokens(c, payload)
         return c.json({
           access_token: tokens.access,
           expires_in: tokens.expiresIn,
           refresh_token: tokens.refresh,
+          scope: payload.scopes?.join(" "),
         })
       }
 
@@ -905,6 +927,7 @@ export function issuer<
           properties: any
           clientID: string
           subject: string
+          scopes?: string[]
           ttl: {
             access: number
             refresh: number
@@ -944,12 +967,14 @@ export function issuer<
             400,
           )
         }
+        payload.scopes = validateScopes(scope, payload.scopes)
         const tokens = await generateTokens(c, payload, {
           generateRefreshToken,
         })
         return c.json({
           access_token: tokens.access,
           refresh_token: tokens.refresh,
+          scope: payload.scopes?.join(" "),
           expires_in: tokens.expiresIn,
         })
       }
@@ -986,6 +1011,7 @@ export function issuer<
                   opts?.subject || (await resolveSubject(type, properties)),
                 properties,
                 clientID: clientID.toString(),
+                scopes: parseScopes(scope),
                 ttl: {
                   access: opts?.ttl?.access ?? ttlAccess,
                   refresh: opts?.ttl?.refresh ?? ttlRefresh,
@@ -1018,12 +1044,14 @@ export function issuer<
     const audience = c.req.query("audience")
     const code_challenge = c.req.query("code_challenge")
     const code_challenge_method = c.req.query("code_challenge_method")
+    const scope = c.req.query("scope")
     const authorization: AuthorizationState = {
       response_type,
       redirect_uri,
       state,
       client_id,
       audience,
+      scopes: parseScopes(scope),
       pkce:
         code_challenge && code_challenge_method
           ? {
