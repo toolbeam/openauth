@@ -130,6 +130,7 @@ import { Hono } from "hono/tiny"
 import { handle as awsHandle } from "hono/aws-lambda"
 import { Context } from "hono"
 import { deleteCookie, getCookie, setCookie } from "hono/cookie"
+import type { v1 } from "@standard-schema/spec"
 
 /**
  * Sets the subject payload in the JWT token and returns the response.
@@ -190,7 +191,7 @@ import {
   UnauthorizedClientError,
   UnknownStateError,
 } from "./error.js"
-import { compactDecrypt, CompactEncrypt, SignJWT } from "jose"
+import { compactDecrypt, CompactEncrypt, jwtVerify, SignJWT } from "jose"
 import { Storage, StorageAdapter } from "./storage/storage.js"
 import { encryptionKeys, legacySigningKeys, signingKeys } from "./keys.js"
 import { validatePKCE } from "./pkce.js"
@@ -1069,6 +1070,63 @@ export function issuer<
         c.req.raw,
       ),
     )
+  })
+
+  app.get("/userinfo", async (c) => {
+    const header = c.req.header("Authorization")
+
+    if (!header) {
+      return c.json(
+        {
+          error: "invalid_request",
+          error_description: "Missing Authorization header",
+        },
+        400,
+      )
+    }
+
+    const [type, token] = header.split(" ")
+
+    if (type !== "Bearer") {
+      return c.json(
+        {
+          error: "invalid_request",
+          error_description: "Missing or invalid Authorization header",
+        },
+        400,
+      )
+    }
+
+    if (!token) {
+      return c.json(
+        {
+          error: "invalid_request",
+          error_description: "Missing token",
+        },
+        400,
+      )
+    }
+
+    const result = await jwtVerify<{
+      mode: "access"
+      type: keyof SubjectSchema
+      properties: v1.InferInput<SubjectSchema[keyof SubjectSchema]>
+    }>(token, () => signingKey.then((item) => item.public), {
+      issuer: issuer(c),
+    })
+
+    const validated = await input.subjects[result.payload.type][
+      "~standard"
+    ].validate(result.payload.properties)
+
+    if (!validated.issues && result.payload.mode === "access") {
+      return c.json(validated.value as SubjectSchema)
+    }
+
+    return c.json({
+      error: "invalid_token",
+      error_description: "Invalid token",
+    })
   })
 
   app.onError(async (err, c) => {
