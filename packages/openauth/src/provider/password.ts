@@ -336,7 +336,18 @@ export function PasswordProvider(
             email,
           })
         }
-
+        
+        if (action === "register" && provider.type === "code") {
+          const code = generate()
+          await config.sendCode(provider.email, code)
+          return transition({
+           type: "code",
+           code,
+           password: provider.password,
+           email: provider.email,
+          })
+        }
+      
         if (action === "verify" && provider.type === "code") {
           const code = fd.get("code")?.toString()
           if (!code || !timingSafeCompare(code, provider.code))
