@@ -71,6 +71,7 @@ export async function signingKeys(storage: StorageAdapter): Promise<KeyPair[]> {
     const privateKey = await importPKCS8(value.privateKey, value.alg)
     const jwk = await exportJWK(publicKey)
     jwk.kid = value.id
+    jwk.use = "sig"
     results.push({
       id: value.id,
       alg: signingAlg,
