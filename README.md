@@ -82,7 +82,7 @@ import { GithubProvider } from "@openauthjs/openauth/provider/github"
 
 const app = issuer({
   providers: {
-    github: GithubAdapter({
+    github: GithubProvider({
       clientID: process.env.GITHUB_CLIENT_ID!,
       clientSecret: process.env.GITHUB_CLIENT_SECRET!,
       scopes: ["user:email"],
@@ -100,13 +100,13 @@ import { PasswordProvider } from "@openauthjs/openauth/provider/password"
 const app = issuer({
   providers: {
     github: ...,
-    password: PasswordAdapter(...),
+    password: PasswordProvider(...),
   },
   ...
 })
 ```
 
-The password adapter is quite complicated as username/password involve a lot of flows so there are a lot of callbacks to implement. However you can opt into the default UI which has all of this already implemented for you. The only thing you have to specify is how to send a code for forgot password/email verification. In this case we'll log the code but you would send this over email.
+The password provider is quite complicated as username/password involve a lot of flows so there are a lot of callbacks to implement. However you can opt into the default UI which has all of this already implemented for you. The only thing you have to specify is how to send a code for forgot password/email verification. In this case we'll log the code but you would send this over email.
 
 ```ts
 import { PasswordProvider } from "@openauthjs/openauth/provider/password"
@@ -115,7 +115,7 @@ import { PasswordUI } from "@openauthjs/openauth/ui/password"
 const app = issuer({
   providers: {
     github: ...,
-    password: PasswordAdapter(
+    password: PasswordProvider(
       PasswordUI({
         sendCode: async (email, code) => {
           console.log(email, code)

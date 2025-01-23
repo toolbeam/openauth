@@ -26,7 +26,7 @@
  *
  * const app = issuer({
  *   providers: {
- *     github: GithubAdapter({
+ *     github: GithubProvider({
  *       // ...
  *     }),
  *     password: PasswordProvider({

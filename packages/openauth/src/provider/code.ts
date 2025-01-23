@@ -21,7 +21,7 @@
  * })
  * ```
  *
- * You can customize the adapter using.
+ * You can customize the provider using.
  *
  * ```ts {7-9}
  * const ui = CodeUI({

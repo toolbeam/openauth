@@ -39,7 +39,7 @@ import { PasswordProvider } from "@openauthjs/openauth/provider/password"
 
 const app = issuer({
   providers: {
-    github: GithubAdapter({
+    github: GithubProvider({
       // ...
     }),
     password: PasswordProvider({
