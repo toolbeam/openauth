@@ -41,10 +41,12 @@ export interface DynamoStorageOptions {
   table: string
   /**
    * The primary key column name.
+   * @default "pk"
    */
   pk?: string
   /**
    * The sort key column name.
+   * @default "sk"
    */
   sk?: string
   /**
@@ -52,6 +54,11 @@ export interface DynamoStorageOptions {
    * @default "https://dynamodb.{region}.amazonaws.com"
    */
   endpoint?: string
+  /**
+   * The name of the time to live attribute.
+   * @default "expiry"
+   */
+  ttl?: string
 }
 
 /**
@@ -62,6 +69,7 @@ export function DynamoStorage(options: DynamoStorageOptions): StorageAdapter {
   const c = client()
   const pk = options.pk || "pk"
   const sk = options.sk || "sk"
+  const ttl = options.ttl || "expiry"
   const tableName = options.table
 
   function parseKey(key: string[]) {
@@ -109,7 +117,7 @@ export function DynamoStorage(options: DynamoStorageOptions): StorageAdapter {
       }
       const result = await dynamo("GetItem", params)
       if (!result.Item) return
-      if (result.Item.expiry && result.Item.expiry.N < Date.now() / 1000) {
+      if (result.Item[ttl] && result.Item[ttl].N < Date.now() / 1000) {
         return
       }
       return JSON.parse(result.Item.value.S)
@@ -124,7 +132,7 @@ export function DynamoStorage(options: DynamoStorageOptions): StorageAdapter {
           [sk]: { S: parsed.sk },
           ...(expiry
             ? {
-                expiry: { N: Math.floor(expiry.getTime() / 1000).toString() },
+                [ttl]: { N: Math.floor(expiry.getTime() / 1000).toString() },
               }
             : {}),
           value: { S: JSON.stringify(value) },
@@ -172,7 +180,7 @@ export function DynamoStorage(options: DynamoStorageOptions): StorageAdapter {
         const result = await dynamo("Query", params)
 
         for (const item of result.Items || []) {
-          if (item.expiry && item.expiry.N < now) {
+          if (item[ttl] && item[ttl].N < now) {
             continue
           }
           yield [[item[pk].S, item[sk].S], JSON.parse(item.value.S)]
