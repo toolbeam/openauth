@@ -147,7 +147,7 @@ const subjects = createSubjects({
 })
 ```
 
-We are using [valibot](https://github.com/fabian-hiller/valibot) to define the shape of the subject so it can be validated properly. You can use any validation library that is following the [standard-schema specification](https://github.com/standard-schema/standard-schema) - the next version of Zod will support this.
+We are using Valibot in this example. You can use any validation library that is following the [standard-schema specification](https://github.com/standard-schema/standard-schema), including Zod `^3.24.0` and Valibot `^1.0.0`.
 
 You typically will want to place subjects in its own file as it can be imported by all of your apps. You can pass it to the issuer in the `subjects` field.
 
