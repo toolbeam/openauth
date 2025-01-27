@@ -1,4 +1,4 @@
-import { Context } from "hono"
+import { Context } from "hono";
 
 export type Prettify<T> = {
   [K in keyof T]: T[K]
@@ -7,6 +7,8 @@ export type Prettify<T> = {
 export function getRelativeUrl(ctx: Context, path: string) {
   const result = new URL(path, ctx.req.url)
   result.host = ctx.req.header("x-forwarded-host") || result.host
+  result.protocol = ctx.req.header("x-forwarded-proto") || result.protocol;
+  result.port = ctx.req.header("x-forwarded-port") || result.port;
   return result.toString()
 }
 

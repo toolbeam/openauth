@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test"
-import { isDomainMatch } from "../src/util.js"
+import { Context } from "hono"
+import { getRelativeUrl, isDomainMatch } from "../src/util.js"
 
 test("isDomainMatch", () => {
   // Basic matches
@@ -67,3 +68,31 @@ test("isDomainMatch", () => {
   expect(isDomainMatch("example.co.uk.com", "example.co.uk")).toBe(false)
   expect(isDomainMatch("example.com.co.uk", "example.co.uk")).toBe(false)
 })
+
+test("getRelativeUrl", () => {
+  // Helper to create a mock Context
+  const createMockContext = (url: string, headers: Record<string, string> = {}) => {
+    return {
+      req: {
+        url,
+        header: (name: string) => headers[name.toLowerCase()] || '',
+      },
+    } as Context;
+  };
+
+  // Test basic URL construction
+  const ctx1 = createMockContext('http://example.com');
+  expect(getRelativeUrl(ctx1, '/path')).toBe('http://example.com/path');
+  
+  // Test with x-forwarded headers
+  const ctx2 = createMockContext('http://original.com', {
+    'x-forwarded-host': 'forwarded.com',
+    'x-forwarded-proto': 'https',
+    'x-forwarded-port': '443'
+  });
+  expect(getRelativeUrl(ctx2, '/path')).toBe('https://forwarded.com/path');
+
+  // Test with absolute URLs
+  const ctx4 = createMockContext('http://example.com');
+  expect(getRelativeUrl(ctx4, 'http://other.com/path')).toBe('http://other.com/path');
+});
