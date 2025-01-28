@@ -2,6 +2,7 @@ import type { OAuth2Tokens } from "arctic"
 import { Context } from "hono"
 import { Provider } from "./provider.js"
 import { OauthError } from "../error.js"
+import { getRelativeUrl } from "../util.js"
 
 export interface ArcticProviderOptions {
   scopes: string[]
@@ -30,14 +31,9 @@ export function ArcticProvider(
 }> {
   function getClient(c: Context) {
     const callback = new URL(c.req.url)
-    callback.pathname = callback.pathname.replace(/authorize.*$/, "callback")
-    callback.search = ""
-    callback.host = c.req.header("x-forwarded-host") || callback.host
-    return new provider(
-      config.clientID,
-      config.clientSecret,
-      callback.toString(),
-    )
+    const pathname = callback.pathname.replace(/authorize.*$/, "callback")
+    const url = getRelativeUrl(c, pathname)
+    return new provider(config.clientID, config.clientSecret, url)
   }
   return {
     type: "arctic",
