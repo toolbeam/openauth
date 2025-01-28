@@ -124,12 +124,12 @@
  *
  * @packageDocumentation
  */
-import { Context } from "hono"
-import { handle as awsHandle } from "hono/aws-lambda"
-import { deleteCookie, getCookie, setCookie } from "hono/cookie"
-import { Hono } from "hono/tiny"
 import { Provider, ProviderOptions } from "./provider/provider.js"
 import { SubjectPayload, SubjectSchema } from "./subject.js"
+import { Hono } from "hono/tiny"
+import { handle as awsHandle } from "hono/aws-lambda"
+import { Context } from "hono"
+import { deleteCookie, getCookie, setCookie } from "hono/cookie"
 
 /**
  * Sets the subject payload in the JWT token and returns the response.
@@ -184,22 +184,22 @@ export type Prettify<T> = {
   [K in keyof T]: T[K]
 } & {}
 
-import { cors } from "hono/cors"
-import { compactDecrypt, CompactEncrypt, SignJWT } from "jose"
 import {
   MissingParameterError,
   OauthError,
   UnauthorizedClientError,
   UnknownStateError,
 } from "./error.js"
+import { compactDecrypt, CompactEncrypt, SignJWT } from "jose"
+import { Storage, StorageAdapter } from "./storage/storage.js"
 import { encryptionKeys, legacySigningKeys, signingKeys } from "./keys.js"
 import { validatePKCE } from "./pkce.js"
-import { DynamoStorage } from "./storage/dynamo.js"
-import { MemoryStorage } from "./storage/memory.js"
-import { Storage, StorageAdapter } from "./storage/storage.js"
 import { Select } from "./ui/select.js"
 import { setTheme, Theme } from "./ui/theme.js"
 import { getRelativeUrl, isDomainMatch } from "./util.js"
+import { DynamoStorage } from "./storage/dynamo.js"
+import { MemoryStorage } from "./storage/memory.js"
+import { cors } from "hono/cors"
 
 /** @internal */
 export const aws = awsHandle
