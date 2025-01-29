@@ -21,6 +21,11 @@ export default issuer({
         sendCode: async (email, code) => {
           console.log(email, code)
         },
+        validatePassword: (password) => {
+          if (password.length < 8) {
+            return "Password must be at least 8 characters"
+          }
+        },
       }),
     ),
   },

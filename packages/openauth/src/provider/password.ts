@@ -125,6 +125,21 @@ export interface PasswordConfig {
    * ```
    */
   sendCode: (email: string, code: string) => Promise<void>
+  /**
+   * Callback to validate the password on sign up and password reset.
+   *
+   * @example
+   * ```ts
+   * {
+   *   validatePassword: (password) => {
+   *      return password.length < 8 ? "Password must be at least 8 characters" : undefined
+   *   }
+   * }
+   * ```
+   */
+  validatePassword?: (
+    password: string,
+  ) => Promise<string | undefined> | string | undefined
 }
 
 /**
@@ -172,6 +187,10 @@ export type PasswordRegisterError =
     }
   | {
       type: "password_mismatch"
+    }
+  | {
+      type: "validation_error"
+      message?: string
     }
 
 /**
@@ -222,6 +241,10 @@ export type PasswordChangeError =
     }
   | {
       type: "password_mismatch"
+    }
+  | {
+      type: "validation_error"
+      message: string
     }
 
 /**
@@ -321,6 +344,20 @@ export function PasswordProvider(
             return transition(provider, { type: "invalid_password" })
           if (password !== repeat)
             return transition(provider, { type: "password_mismatch" })
+          if (config.validatePassword) {
+            let validationError: string | undefined
+            try {
+              validationError = await config.validatePassword(password)
+            } catch (error) {
+              validationError =
+                error instanceof Error ? error.message : undefined
+            }
+            if (validationError)
+              return transition(provider, {
+                type: "validation_error",
+                message: validationError,
+              })
+          }
           const existing = await Storage.get(ctx.storage, [
             "email",
             email,

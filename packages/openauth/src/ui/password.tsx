@@ -56,6 +56,10 @@ const DEFAULT_COPY = {
    */
   error_password_mismatch: "Passwords do not match.",
   /**
+   * Error message when the user enters a password that fails validation.
+   */
+  error_validation_error: "Password does not meet requirements.",
+  /**
    * Title of the register page.
    */
   register_title: "Welcome to the app",
@@ -136,18 +140,8 @@ type PasswordUICopy = typeof DEFAULT_COPY
 /**
  * Configure the password UI.
  */
-export interface PasswordUIOptions {
-  /**
-   * Callback to send the confirmation code to the user.
-   *
-   * @example
-   * ```ts
-   * async (email, code) => {
-   *   // Send an email with the code
-   * }
-   * ```
-   */
-  sendCode: PasswordConfig["sendCode"]
+export interface PasswordUIOptions
+  extends Pick<PasswordConfig, "sendCode" | "validatePassword"> {
   /**
    * Custom copy for the UI.
    */
@@ -164,6 +158,7 @@ export function PasswordUI(input: PasswordUIOptions): PasswordConfig {
     ...input.copy,
   }
   return {
+    validatePassword: input.validatePassword,
     sendCode: input.sendCode,
     login: async (_req, form, error): Promise<Response> => {
       const jsx = (
@@ -214,13 +209,23 @@ export function PasswordUI(input: PasswordUIOptions): PasswordConfig {
       const emailError = ["invalid_email", "email_taken"].includes(
         error?.type || "",
       )
-      const passwordError = ["invalid_password", "password_mismatch"].includes(
-        error?.type || "",
-      )
+      const passwordError = [
+        "invalid_password",
+        "password_mismatch",
+        "validation_error",
+      ].includes(error?.type || "")
       const jsx = (
         <Layout>
           <form data-component="form" method="post">
-            <FormAlert message={error?.type && copy?.[`error_${error.type}`]} />
+            <FormAlert
+              message={
+                error?.type
+                  ? error.type === "validation_error"
+                    ? (error.message ?? copy?.[`error_${error.type}`])
+                    : copy?.[`error_${error.type}`]
+                  : undefined
+              }
+            />
             {state.type === "start" && (
               <>
                 <input type="hidden" name="action" value="register" />
@@ -292,13 +297,23 @@ export function PasswordUI(input: PasswordUIOptions): PasswordConfig {
       })
     },
     change: async (_req, state, form, error): Promise<Response> => {
-      const passwordError = ["invalid_password", "password_mismatch"].includes(
-        error?.type || "",
-      )
+      const passwordError = [
+        "invalid_password",
+        "password_mismatch",
+        "validation_error",
+      ].includes(error?.type || "")
       const jsx = (
         <Layout>
           <form data-component="form" method="post" replace>
-            <FormAlert message={error?.type && copy?.[`error_${error.type}`]} />
+            <FormAlert
+              message={
+                error?.type
+                  ? error.type === "validation_error"
+                    ? (error.message ?? copy?.[`error_${error.type}`])
+                    : copy?.[`error_${error.type}`]
+                  : undefined
+              }
+            />
             {state.type === "start" && (
               <>
                 <input type="hidden" name="action" value="code" />
