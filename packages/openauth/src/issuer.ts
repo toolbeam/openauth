@@ -715,7 +715,7 @@ export function issuer<
   }
 
   function issuer(ctx: Context) {
-    return getRelativeUrl(ctx, "/")
+    return (new URL(getRelativeUrl(ctx, '/'))).origin
   }
 
   const app = new Hono<{
