@@ -41,6 +41,7 @@ import { UnknownStateError } from "../error.js"
 import { Storage } from "../storage/storage.js"
 import { Provider } from "./provider.js"
 import { generateUnbiasedDigits, timingSafeCompare } from "../random.js"
+import { v1 } from "@standard-schema/spec"
 
 /**
  * @internal
@@ -137,9 +138,9 @@ export interface PasswordConfig {
    * }
    * ```
    */
-  validatePassword?: (
-    password: string,
-  ) => Promise<string | undefined> | string | undefined
+  validatePassword?:
+    | v1.StandardSchema
+    | ((password: string) => Promise<string | undefined> | string | undefined)
 }
 
 /**
@@ -347,7 +348,18 @@ export function PasswordProvider(
           if (config.validatePassword) {
             let validationError: string | undefined
             try {
-              validationError = await config.validatePassword(password)
+              if (typeof config.validatePassword === "function") {
+                validationError = await config.validatePassword(password)
+              } else {
+                const res =
+                  await config.validatePassword["~standard"].validate(password)
+
+                if (res.issues?.length) {
+                  throw new Error(
+                    res.issues.map((issue) => issue.message).join(", "),
+                  )
+                }
+              }
             } catch (error) {
               validationError =
                 error instanceof Error ? error.message : undefined
