@@ -1,5 +1,18 @@
 # @openauthjs/openauth
 
+## 0.3.7
+
+### Patch Changes
+
+- 9036544: Add PKCE option to Oauth2Provider
+- 8f214e3: Import only hono type in util.ts
+- 4cd9e96: add provider logos for apple, x, facebook, microsoft and slack
+- 3e3c9e6: Add password validation callback
+- f46946c: Add use: sig to jwks.
+- 7d39e76: Add way to modify the dynamo ttl attribute name
+- 754d776: Supports forwarded protocol and forwarded port in the relative URL
+- 1b5525b: add ability to resend verification code during registration
+
 ## 0.3.6
 
 ### Patch Changes
