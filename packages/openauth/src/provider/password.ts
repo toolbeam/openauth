@@ -490,6 +490,32 @@ export function PasswordProvider(
           if (password !== repeat)
             return transition(provider, { type: "password_mismatch" })
 
+          if (config.validatePassword) {
+            let validationError: string | undefined
+            try {
+              if (typeof config.validatePassword === "function") {
+                validationError = await config.validatePassword(password)
+              } else {
+                const res =
+                  await config.validatePassword["~standard"].validate(password)
+
+                if (res.issues?.length) {
+                  throw new Error(
+                    res.issues.map((issue) => issue.message).join(", "),
+                  )
+                }
+              }
+            } catch (error) {
+              validationError =
+                error instanceof Error ? error.message : undefined
+            }
+            if (validationError)
+              return transition(provider, {
+                type: "validation_error",
+                message: validationError,
+              })
+          }
+
           await Storage.set(
             ctx.storage,
             ["email", provider.email, "password"],
