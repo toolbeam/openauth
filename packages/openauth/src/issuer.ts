@@ -679,6 +679,7 @@ export function issuer<
         value.ttl.refresh,
       )
     }
+    const accessTimeUsed = Math.floor((value.timeUsed ?? Date.now()) / 1000);
     return {
       access: await new SignJWT({
         mode: "access",
@@ -689,7 +690,7 @@ export function issuer<
         sub: value.subject,
       })
         .setExpirationTime(
-          Math.floor((value.timeUsed ?? Date.now()) / 1000 + value.ttl.access),
+          Math.floor(accessTimeUsed + value.ttl.access),
         )
         .setProtectedHeader(
           await signingKey.then((k) => ({
@@ -699,6 +700,7 @@ export function issuer<
           })),
         )
         .sign(await signingKey.then((item) => item.private)),
+      expiresIn: Math.floor(accessTimeUsed + value.ttl.access - (Date.now() / 1000)),
       refresh: [value.subject, refreshToken].join(":"),
     }
   }
@@ -873,6 +875,7 @@ export function issuer<
         const tokens = await generateTokens(c, payload)
         return c.json({
           access_token: tokens.access,
+          expires_in: tokens.expiresIn,
           refresh_token: tokens.refresh,
         })
       }
