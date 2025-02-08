@@ -20,7 +20,7 @@ import { TwitchProvider } from "@openauthjs/openauth/provider/twitch"
 export default issuer({
   providers: {
     twitch: TwitchProvider({
-      clientId: "1234567890",
+      clientID: "1234567890",
       clientSecret: "0987654321"
     })
   }
@@ -47,7 +47,7 @@ The config for the provider.
 Create a Twitch OAuth2 provider.
 ```ts
 TwitchProvider({
-  clientId: "1234567890",
+  clientID: "1234567890",
   clientSecret: "0987654321"
 })
 ```

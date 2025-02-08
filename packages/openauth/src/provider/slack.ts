@@ -8,7 +8,7 @@
  *   providers: {
  *     slack: SlackProvider({
  *       team: "T1234567890",
- *       clientId: "1234567890",
+ *       clientID: "1234567890",
  *       clientSecret: "0987654321",
  *       scopes: ["openid", "email", "profile"]
  *     })
@@ -49,7 +49,7 @@ export interface SlackConfig extends Oauth2WrappedConfig {
  * ```ts
  * SlackProvider({
  *   team: "T1234567890",
- *   clientId: "1234567890",
+ *   clientID: "1234567890",
  *   clientSecret: "0987654321",
  *   scopes: ["openid", "email", "profile"]
  * })

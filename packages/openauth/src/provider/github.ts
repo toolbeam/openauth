@@ -7,7 +7,7 @@
  * export default issuer({
  *   providers: {
  *     github: GithubProvider({
- *       clientId: "1234567890",
+ *       clientID: "1234567890",
  *       clientSecret: "0987654321"
  *     })
  *   }
@@ -28,7 +28,7 @@ export interface GithubConfig extends Oauth2WrappedConfig {}
  * @example
  * ```ts
  * GithubProvider({
- *   clientId: "1234567890",
+ *   clientID: "1234567890",
  *   clientSecret: "0987654321"
  * })
  * ```

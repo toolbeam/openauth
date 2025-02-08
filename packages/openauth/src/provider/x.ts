@@ -7,7 +7,7 @@
  * export default issuer({
  *   providers: {
  *     x: XProvider({
- *       clientId: "1234567890",
+ *       clientID: "1234567890",
  *       clientSecret: "0987654321"
  *     })
  *   }
@@ -28,7 +28,7 @@ export interface XProviderConfig extends Oauth2WrappedConfig {}
  * @example
  * ```ts
  * XProvider({
- *   clientId: "1234567890",
+ *   clientID: "1234567890",
  *   clientSecret: "0987654321"
  * })
  * ```

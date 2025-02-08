@@ -9,7 +9,7 @@
  *     keycloak: KeycloakProvider({
  *       baseUrl: "https://your-keycloak-domain",
  *       realm: "your-realm",
- *       clientId: "1234567890",
+ *       clientID: "1234567890",
  *       clientSecret: "0987654321"
  *     })
  *   }
@@ -58,7 +58,7 @@ export interface KeycloakConfig extends Oauth2WrappedConfig {
  * KeycloakProvider({
  *   baseUrl: "https://your-keycloak-domain",
  *   realm: "your-realm",
- *   clientId: "1234567890",
+ *   clientID: "1234567890",
  *   clientSecret: "0987654321"
  * })
  * ```

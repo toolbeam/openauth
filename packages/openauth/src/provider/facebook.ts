@@ -9,7 +9,7 @@
  * export default issuer({
  *   providers: {
  *     facebook: FacebookProvider({
- *       clientId: "1234567890",
+ *       clientID: "1234567890",
  *       clientSecret: "0987654321"
  *     })
  *   }
@@ -24,7 +24,7 @@
  * export default issuer({
  *   providers: {
  *     facebook: FacebookOidcProvider({
- *       clientId: "1234567890"
+ *       clientID: "1234567890"
  *     })
  *   }
  * })
@@ -46,7 +46,7 @@ export interface FacebookOidcConfig extends OidcWrappedConfig {}
  * @example
  * ```ts
  * FacebookProvider({
- *   clientId: "1234567890",
+ *   clientID: "1234567890",
  *   clientSecret: "0987654321"
  * })
  * ```
@@ -71,7 +71,7 @@ export function FacebookProvider(config: FacebookConfig) {
  * @example
  * ```ts
  * FacebookOidcProvider({
- *   clientId: "1234567890"
+ *   clientID: "1234567890"
  * })
  * ```
  */

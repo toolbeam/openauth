@@ -7,7 +7,7 @@
  * export default issuer({
  *   providers: {
  *     oauth2: Oauth2Provider({
- *       clientId: "1234567890",
+ *       clientID: "1234567890",
  *       clientSecret: "0987654321",
  *       endpoint: {
  *         authorization: "https://auth.myserver.com/authorize",

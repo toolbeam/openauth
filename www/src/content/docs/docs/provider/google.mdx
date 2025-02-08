@@ -22,7 +22,7 @@ import { GoogleProvider } from "@openauthjs/openauth/provider/google"
 export default issuer({
   providers: {
     google: GoogleProvider({
-      clientId: "1234567890",
+      clientID: "1234567890",
       clientSecret: "0987654321"
     })
   }
@@ -37,7 +37,7 @@ import { GoogleOidcProvider } from "@openauthjs/openauth/provider/google"
 export default issuer({
   providers: {
     google: GoogleOidcProvider({
-      clientId: "1234567890"
+      clientID: "1234567890"
     })
   }
 })
@@ -65,7 +65,7 @@ Create a Google OIDC provider.
 This is useful if you just want to verify the user's email address.
 ```ts
 GoogleOidcProvider({
-  clientId: "1234567890"
+  clientID: "1234567890"
 })
 ```
 </Segment>
@@ -87,7 +87,7 @@ The config for the provider.
 Create a Google OAuth2 provider.
 ```ts
 GoogleProvider({
-  clientId: "1234567890",
+  clientID: "1234567890",
   clientSecret: "0987654321"
 })
 ```

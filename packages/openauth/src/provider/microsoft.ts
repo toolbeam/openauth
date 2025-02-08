@@ -10,7 +10,7 @@
  *   providers: {
  *     microsoft: MicrosoftProvider({
  *       tenant: "1234567890",
- *       clientId: "1234567890",
+ *       clientID: "1234567890",
  *       clientSecret: "0987654321"
  *     })
  *   }
@@ -25,7 +25,7 @@
  * export default issuer({
  *   providers: {
  *     microsoft: MicrosoftOidcProvider({
- *       clientId: "1234567890"
+ *       clientID: "1234567890"
  *     })
  *   }
  * })
@@ -62,7 +62,7 @@ export interface MicrosoftOidcConfig extends OidcWrappedConfig {}
  * ```ts
  * MicrosoftProvider({
  *   tenant: "1234567890",
- *   clientId: "1234567890",
+ *   clientID: "1234567890",
  *   clientSecret: "0987654321"
  * })
  * ```
@@ -87,7 +87,7 @@ export function MicrosoftProvider(config: MicrosoftConfig) {
  * @example
  * ```ts
  * MicrosoftOidcProvider({
- *   clientId: "1234567890"
+ *   clientID: "1234567890"
  * })
  * ```
  */

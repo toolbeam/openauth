@@ -21,7 +21,7 @@ export default issuer({
   providers: {
     slack: SlackProvider({
       team: "T1234567890",
-      clientId: "1234567890",
+      clientID: "1234567890",
       clientSecret: "0987654321",
       scopes: ["openid", "email", "profile"]
     })
@@ -50,7 +50,7 @@ Creates a [Slack OAuth2 provider](https://api.slack.com/authentication/sign-in-w
 ```ts
 SlackProvider({
   team: "T1234567890",
-  clientId: "1234567890",
+  clientID: "1234567890",
   clientSecret: "0987654321",
   scopes: ["openid", "email", "profile"]
 })

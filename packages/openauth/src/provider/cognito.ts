@@ -9,7 +9,7 @@
  *     cognito: CognitoProvider({
  *       domain: "your-domain.auth.us-east-1.amazoncognito.com",
  *       region: "us-east-1",
- *       clientId: "1234567890",
+ *       clientID: "1234567890",
  *       clientSecret: "0987654321"
  *     })
  *   }
@@ -55,7 +55,7 @@ export interface CognitoConfig extends Oauth2WrappedConfig {
  * CognitoProvider({
  *   domain: "your-domain.auth.us-east-1.amazoncognito.com",
  *   region: "us-east-1",
- *   clientId: "1234567890",
+ *   clientID: "1234567890",
  *   clientSecret: "0987654321"
  * })
  * ```

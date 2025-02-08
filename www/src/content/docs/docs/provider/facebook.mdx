@@ -22,7 +22,7 @@ import { FacebookProvider } from "@openauthjs/openauth/provider/facebook"
 export default issuer({
   providers: {
     facebook: FacebookProvider({
-      clientId: "1234567890",
+      clientID: "1234567890",
       clientSecret: "0987654321"
     })
   }
@@ -37,7 +37,7 @@ import { FacebookOidcProvider } from "@openauthjs/openauth/provider/facebook"
 export default issuer({
   providers: {
     facebook: FacebookOidcProvider({
-      clientId: "1234567890"
+      clientID: "1234567890"
     })
   }
 })
@@ -65,7 +65,7 @@ Create a Facebook OIDC provider.
 This is useful if you just want to verify the user's email address.
 ```ts
 FacebookOidcProvider({
-  clientId: "1234567890"
+  clientID: "1234567890"
 })
 ```
 </Segment>
@@ -87,7 +87,7 @@ The config for the provider.
 Create a Facebook OAuth2 provider.
 ```ts
 FacebookProvider({
-  clientId: "1234567890",
+  clientID: "1234567890",
   clientSecret: "0987654321"
 })
 ```

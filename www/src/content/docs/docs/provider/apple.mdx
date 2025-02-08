@@ -22,7 +22,7 @@ import { AppleProvider } from "@openauthjs/openauth/provider/apple"
 export default issuer({
   providers: {
     apple: AppleProvider({
-      clientId: "1234567890",
+      clientID: "1234567890",
       clientSecret: "0987654321"
     })
   }
@@ -37,7 +37,7 @@ import { AppleOidcProvider } from "@openauthjs/openauth/provider/apple"
 export default issuer({
   providers: {
     apple: AppleOidcProvider({
-      clientId: "1234567890"
+      clientID: "1234567890"
     })
   }
 })
@@ -65,7 +65,7 @@ Create an Apple OIDC provider.
 This is useful if you just want to verify the user's email address.
 ```ts
 AppleOidcProvider({
-  clientId: "1234567890"
+  clientID: "1234567890"
 })
 ```
 </Segment>
@@ -87,7 +87,7 @@ The config for the provider.
 Create an Apple OAuth2 provider.
 ```ts
 AppleProvider({
-  clientId: "1234567890",
+  clientID: "1234567890",
   clientSecret: "0987654321"
 })
 ```

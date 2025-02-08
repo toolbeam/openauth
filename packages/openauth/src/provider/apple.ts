@@ -9,7 +9,7 @@
  * export default issuer({
  *   providers: {
  *     apple: AppleProvider({
- *       clientId: "1234567890",
+ *       clientID: "1234567890",
  *       clientSecret: "0987654321"
  *     })
  *   }
@@ -24,7 +24,7 @@
  * export default issuer({
  *   providers: {
  *     apple: AppleOidcProvider({
- *       clientId: "1234567890"
+ *       clientID: "1234567890"
  *     })
  *   }
  * })
@@ -46,7 +46,7 @@ export interface AppleOidcConfig extends OidcWrappedConfig {}
  * @example
  * ```ts
  * AppleProvider({
- *   clientId: "1234567890",
+ *   clientID: "1234567890",
  *   clientSecret: "0987654321"
  * })
  * ```
@@ -71,7 +71,7 @@ export function AppleProvider(config: AppleConfig) {
  * @example
  * ```ts
  * AppleOidcProvider({
- *   clientId: "1234567890"
+ *   clientID: "1234567890"
  * })
  * ```
  */
