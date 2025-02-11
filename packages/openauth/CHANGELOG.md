@@ -1,5 +1,11 @@
 # @openauthjs/openauth
 
+## 0.3.8
+
+### Patch Changes
+
+- c75005b: retry failed dynamo calls
+
 ## 0.3.7
 
 ### Patch Changes
