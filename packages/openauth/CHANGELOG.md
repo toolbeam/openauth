@@ -1,5 +1,12 @@
 # @openauthjs/openauth
 
+## 0.3.9
+
+### Patch Changes
+
+- 40f6033: enable logger by default
+- 3ce40fd: log dynamo error cause
+
 ## 0.3.8
 
 ### Patch Changes
