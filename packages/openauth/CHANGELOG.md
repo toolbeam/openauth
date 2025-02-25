@@ -1,5 +1,17 @@
 # @openauthjs/openauth
 
+## 0.4.0
+
+### Minor Changes
+
+- 4e38fa6: feat: Return expires_in from /token endpoint
+- fcaafcf: Return signing alg from jwks.json endpoint
+
+### Patch Changes
+
+- 9e3c2ac: Call password validation callback on password reset
+- dc40b02: Fix providers client id case from `clientId` to `clientID`
+
 ## 0.3.9
 
 ### Patch Changes
