@@ -69,11 +69,6 @@ export interface MagicLinkProviderConfig<
    */
   expiry?: number
   /**
-   * Whether to use PKCE (Proof Key for Code Exchange) for the authorization code flow.
-   * @default false
-   */
-  pkce?: boolean
-  /**
    * The request handler to generate the UI for the magic link flow.
    *
    * Takes the standard [`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request)
