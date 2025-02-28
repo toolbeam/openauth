@@ -1,5 +1,11 @@
 # @openauthjs/openauth
 
+## 0.4.1
+
+### Patch Changes
+
+- 33959c3: better logging on oidc wellknown errors
+
 ## 0.4.0
 
 ### Minor Changes
