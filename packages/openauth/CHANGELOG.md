@@ -1,5 +1,11 @@
 # @openauthjs/openauth
 
+## 0.4.2
+
+### Patch Changes
+
+- a03e510: fix for fetch timeout, wrap everything in lazy
+
 ## 0.4.1
 
 ### Patch Changes
