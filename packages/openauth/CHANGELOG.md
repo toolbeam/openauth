@@ -1,5 +1,11 @@
 # @openauthjs/openauth
 
+## 0.4.3
+
+### Patch Changes
+
+- ec8ca65: include expires_in for refresh response
+
 ## 0.4.2
 
 ### Patch Changes
