@@ -152,13 +152,13 @@ export interface OnSuccessResponder<
    */
   subject<Type extends T["type"]>(
     type: Type,
+    id: string,
     properties: Extract<T, { type: Type }>["properties"],
     opts?: {
       ttl?: {
         access?: number
         refresh?: number
       }
-      subject?: string
     },
   ): Promise<Response>
 }
@@ -515,18 +515,13 @@ export function issuer<
     async success(ctx: Context, properties: any, successOpts) {
       return await input.success(
         {
-          async subject(type, properties, subjectOpts) {
+          async subject(type, id, properties, subjectOpts) {
             const authorization = await getAuthorization(ctx)
-            const subject = subjectOpts?.subject
-              ? subjectOpts.subject
-              : await resolveSubject(type, properties)
-            await successOpts?.invalidate?.(
-              await resolveSubject(type, properties),
-            )
+            await successOpts?.invalidate?.(id)
             if (authorization.response_type === "token") {
               const location = new URL(authorization.redirect_uri)
               const tokens = await generateTokens(ctx, {
-                subject,
+                subject: id,
                 type: type as string,
                 properties,
                 clientID: authorization.client_id,
@@ -551,7 +546,7 @@ export function issuer<
                 {
                   type,
                   properties,
-                  subject,
+                  subject: id,
                   redirectURI: authorization.redirect_uri,
                   clientID: authorization.client_id,
                   pkce: authorization.pkce,
@@ -632,18 +627,6 @@ export function issuer<
     )
       .setProtectedHeader({ alg: "RSA-OAEP-512", enc: "A256GCM" })
       .encrypt(await encryptionKey().then((k) => k.public))
-  }
-
-  async function resolveSubject(type: string, properties: any) {
-    const jsonString = JSON.stringify(properties)
-    const encoder = new TextEncoder()
-    const data = encoder.encode(jsonString)
-    const hashBuffer = await crypto.subtle.digest("SHA-1", data)
-    const hashArray = Array.from(new Uint8Array(hashBuffer))
-    const hashHex = hashArray
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("")
-    return `${type}:${hashHex.slice(0, 16)}`
   }
 
   async function generateTokens(
@@ -979,11 +962,10 @@ export function issuer<
         })
         return input.success(
           {
-            async subject(type, properties, opts) {
+            async subject(type, id, properties, opts) {
               const tokens = await generateTokens(c, {
                 type: type as string,
-                subject:
-                  opts?.subject || (await resolveSubject(type, properties)),
+                subject: id,
                 properties,
                 clientID: clientID.toString(),
                 ttl: {
