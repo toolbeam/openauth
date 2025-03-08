@@ -116,7 +116,7 @@ export type Challenge = {
 /**
  * Configure the client.
  */
-export interface ClientInput {
+export interface ClientInput<S extends SubjectSchema = SubjectSchema> {
   /**
    * The client ID. This is just a string to identify your app.
    *
@@ -141,6 +141,12 @@ export interface ClientInput {
    * ```
    */
   issuer?: string
+
+  /**
+   * Optionally specify the subjects that are used by the issuer.
+   */
+  subjects?: S
+
   /**
    * Optionally, override the internally used fetch function.
    *
@@ -319,7 +325,11 @@ export interface VerifyResult<T extends SubjectSchema> {
    * Has the same shape as the subjects you defined when creating the issuer.
    */
   subject: {
-    [type in keyof T]: { type: type; properties: v1.InferOutput<T[type]> }
+    [type in keyof T]: {
+      id: string
+      type: type
+      properties: v1.InferOutput<T[type]>
+    }
   }[keyof T]
 }
 
@@ -343,7 +353,7 @@ export interface VerifyError {
 /**
  * An instance of the OpenAuth client contains the following methods.
  */
-export interface Client {
+export interface Client<S extends SubjectSchema> {
   /**
    * Start the autorization flow. For example, in SSR sites.
    *
@@ -532,11 +542,38 @@ export interface Client {
    * }
    * ```
    */
-  verify<T extends SubjectSchema>(
-    subjects: T,
+  verify(
     token: string,
     options?: VerifyOptions,
-  ): Promise<VerifyResult<T> | VerifyError>
+  ): Promise<VerifyResult<S> | VerifyError>
+
+  /**
+   * Decode a JWT token without verifying its signature.
+   *
+   * ```ts
+   * const decoded = client.decode(token, subjects)
+   * ```
+   *
+   * This returns the decoded token's subject if successful.
+   *
+   * ```ts
+   * if (!decoded.err) {
+   *   console.log(decoded.subject.properties)
+   * }
+   * ```
+   *
+   * Or if it fails, it returns an error.
+   *
+   * ```ts
+   * if (decoded.err) {
+   *   // handle error
+   * }
+   * ```
+   */
+  decode<T extends SubjectSchema>(
+    token: string,
+    subjects: T,
+  ): DecodeSuccess<T> | DecodeError
 }
 
 /**
@@ -544,7 +581,37 @@ export interface Client {
  *
  * @param input - Configure the client.
  */
-export function createClient(input: ClientInput): Client {
+/**
+ * Returned when the decode is successful.
+ */
+export interface DecodeSuccess<T extends SubjectSchema> {
+  /**
+   * This is always `false` when the decode is successful.
+   */
+  err: false
+  /**
+   * The decoded subject from the token.
+   */
+  subject: {
+    id: string
+    type: keyof T
+    properties: v1.InferOutput<T[keyof T]>
+  }
+}
+
+/**
+ * Returned when the decode fails.
+ */
+export interface DecodeError {
+  /**
+   * The type of error that occurred.
+   */
+  err: InvalidAccessTokenError
+}
+
+export function createClient<S extends SubjectSchema>(
+  input: ClientInput<S>,
+): Client<S> {
   const jwksCache = new Map<string, ReturnType<typeof createLocalJWKSet>>()
   const issuerCache = new Map<string, WellKnown>()
   const issuer = input.issuer || process.env.OPENAUTH_ISSUER
@@ -695,7 +762,6 @@ export function createClient(input: ClientInput): Client {
       }
     },
     async verify<T extends SubjectSchema>(
-      subjects: T,
       token: string,
       options?: VerifyOptions,
     ): Promise<VerifyResult<T> | VerifyError> {
@@ -708,33 +774,32 @@ export function createClient(input: ClientInput): Client {
         }>(token, jwks, {
           issuer,
         })
-        const validated = await subjects[result.payload.type][
-          "~standard"
-        ].validate(result.payload.properties)
-        if (!validated.issues && result.payload.mode === "access")
-          return {
-            aud: result.payload.aud as string,
-            subject: {
-              type: result.payload.type,
-              properties: validated.value,
-            } as any,
+        let properties = result.payload.properties
+        if (input.subjects) {
+          const schema = input.subjects[result.payload.type as keyof S]
+          const validation = await schema["~standard"].validate(properties)
+          if (validation.issues) {
+            throw new InvalidSubjectError()
           }
+          properties = validation.value
+        }
         return {
-          err: new InvalidSubjectError(),
+          aud: result.payload.aud as string,
+          subject: {
+            id: result.payload.sub,
+            type: result.payload.type,
+            properties: properties,
+          } as any,
         }
       } catch (e) {
         if (e instanceof errors.JWTExpired && options?.refresh) {
           const refreshed = await this.refresh(options.refresh)
           if (refreshed.err) return refreshed
-          const verified = await result.verify(
-            subjects,
-            refreshed.tokens!.access,
-            {
-              refresh: refreshed.tokens!.refresh,
-              issuer,
-              fetch: options?.fetch,
-            },
-          )
+          const verified = await result.verify(refreshed.tokens!.access, {
+            refresh: refreshed.tokens!.refresh,
+            issuer,
+            fetch: options?.fetch,
+          })
           if (verified.err) return verified
           verified.tokens = refreshed.tokens
           return verified
@@ -742,6 +807,38 @@ export function createClient(input: ClientInput): Client {
         return {
           err: new InvalidAccessTokenError(),
         }
+      }
+    },
+
+    decode<T extends SubjectSchema>(
+      token: string,
+      subjects: T,
+    ): DecodeSuccess<T> | DecodeError {
+      try {
+        const payload = decodeJwt(token)
+        if (
+          !payload ||
+          typeof payload.type !== "string" ||
+          typeof payload.sub !== "string"
+        ) {
+          return { err: new InvalidAccessTokenError() }
+        }
+
+        const type = payload.type as keyof T
+        if (!subjects[type]) {
+          return { err: new InvalidAccessTokenError() }
+        }
+
+        return {
+          err: false,
+          subject: {
+            id: payload.sub,
+            type,
+            properties: payload.properties as v1.InferOutput<T[keyof T]>,
+          },
+        }
+      } catch (e) {
+        return { err: new InvalidAccessTokenError() }
       }
     },
   }

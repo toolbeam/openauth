@@ -9,7 +9,7 @@ import {
   afterAll,
   mock,
 } from "bun:test"
-import { object, string } from "valibot"
+import { object } from "valibot"
 import { issuer } from "../src/issuer.js"
 import { createClient } from "../src/client.js"
 import {
@@ -20,9 +20,7 @@ import { MemoryStorage } from "../src/storage/memory.js"
 import { createSubjects } from "../src/subject.js"
 
 const subjects = createSubjects({
-  user: object({
-    userID: string(),
-  }),
+  user: object({}),
 })
 
 let storage = MemoryStorage()
@@ -31,9 +29,7 @@ const auth = issuer({
   subjects,
   allow: async () => true,
   success: async (ctx) => {
-    return ctx.subject("user", {
-      userID: "123",
-    })
+    return ctx.subject("user", "123", {})
   },
   ttl: {
     access: 60,
@@ -78,10 +74,11 @@ describe("verify", () => {
       clientID: "123",
       fetch: (a, b) => Promise.resolve(auth.request(a, b)),
     })
-    const [verifier, authorization] = await client.pkce(
+    const authorization = await client.authorize(
       "https://client.example.com/callback",
+      "code",
     )
-    let response = await auth.request(authorization)
+    let response = await auth.request(authorization.url)
     response = await auth.request(response.headers.get("location")!, {
       headers: {
         cookie: response.headers.get("set-cookie")!,
@@ -92,7 +89,7 @@ describe("verify", () => {
     const exchanged = await client.exchange(
       code!,
       "https://client.example.com/callback",
-      verifier,
+      authorization.challenge.verifier,
     )
     if (exchanged.err) throw exchanged.err
     tokens = exchanged.tokens
@@ -100,14 +97,13 @@ describe("verify", () => {
 
   test("success", async () => {
     const refreshSpy = spyOn(client, "refresh")
-    const verified = await client.verify(subjects, tokens.access)
+    const verified = await client.verify(tokens.access)
     expect(verified).toStrictEqual({
       aud: "123",
       subject: {
+        id: "123",
         type: "user",
-        properties: {
-          userID: "123",
-        },
+        properties: {},
       },
     })
     expect(refreshSpy).not.toBeCalled()
@@ -116,7 +112,7 @@ describe("verify", () => {
   test("success after refresh", async () => {
     const refreshSpy = spyOn(client, "refresh")
     setSystemTime(Date.now() + 1000 * 6000 + 1000)
-    const verified = await client.verify(subjects, tokens.access, {
+    const verified = await client.verify(tokens.access, {
       refresh: tokens.refresh,
     })
     expect(verified).toStrictEqual({
@@ -127,10 +123,9 @@ describe("verify", () => {
         refresh: expectNonEmptyString,
       },
       subject: {
+        id: "123",
         type: "user",
-        properties: {
-          userID: "123",
-        },
+        properties: {},
       },
     })
     expect(refreshSpy).toBeCalled()
@@ -138,7 +133,7 @@ describe("verify", () => {
 
   test("failure with expired access token", async () => {
     setSystemTime(Date.now() + 1000 * 6000 + 1000)
-    const verified = await client.verify(subjects, tokens.access)
+    const verified = await client.verify(tokens.access)
     expect(verified).toStrictEqual({
       err: expect.any(InvalidAccessTokenError),
     })
@@ -146,7 +141,7 @@ describe("verify", () => {
 
   test("failure with invalid refresh token", async () => {
     setSystemTime(Date.now() + 1000 * 6000 + 1000)
-    const verified = await client.verify(subjects, tokens.access, {
+    const verified = await client.verify(tokens.access, {
       refresh: "foo",
     })
     expect(verified).toStrictEqual({
