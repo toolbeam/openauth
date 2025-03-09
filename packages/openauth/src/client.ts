@@ -812,7 +812,6 @@ export function createClient<S extends SubjectSchema>(
 
     decode<T extends SubjectSchema>(
       token: string,
-      subjects: T,
     ): DecodeSuccess<T> | DecodeError {
       try {
         const payload = decodeJwt(token)
@@ -825,9 +824,6 @@ export function createClient<S extends SubjectSchema>(
         }
 
         const type = payload.type as keyof T
-        if (!subjects[type]) {
-          return { err: new InvalidAccessTokenError() }
-        }
 
         return {
           err: false,
