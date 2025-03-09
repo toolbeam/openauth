@@ -667,7 +667,8 @@ export function issuer<
         value.ttl.refresh,
       )
     }
-    const accessTimeUsed = Math.floor((value.timeUsed ?? Date.now()) / 1000)
+    const expiry =
+      Math.floor((value.timeUsed ?? Date.now()) / 1000) + value.ttl.access
     return {
       access: await new SignJWT({
         mode: "access",
@@ -677,7 +678,7 @@ export function issuer<
         iss: issuer(ctx),
         sub: value.subject,
       })
-        .setExpirationTime(Math.floor(accessTimeUsed + value.ttl.access))
+        .setExpirationTime(expiry)
         .setProtectedHeader(
           await signingKey().then((k) => ({
             alg: k.alg,
@@ -686,9 +687,7 @@ export function issuer<
           })),
         )
         .sign(await signingKey().then((item) => item.private)),
-      expiresIn: Math.floor(
-        accessTimeUsed + value.ttl.access - Date.now() / 1000,
-      ),
+      expiresIn: Math.floor(expiry - Date.now() / 1000),
       refresh: [value.subject, refreshToken].join(":"),
     }
   }

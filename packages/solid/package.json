@@ -1,0 +1,27 @@
+{
+  "name": "@openauthjs/solid",
+  "version": "0.4.2",
+  "type": "module",
+  "scripts": {
+    "build": "tsc"
+  },
+  "sideEffects": false,
+  "devDependencies": {
+    "@tsconfig/node22": "22.0.0",
+    "typescript": "5.6.3"
+  },
+  "exports": {
+    ".": "./dist/index.jsx"
+  },
+  "peerDependencies": {
+    "solid-js": "^1.8.0"
+  },
+  "dependencies": {
+    "@solid-primitives/storage": "^4.3.1",
+    "@openauthjs/openauth": "workspace:*"
+  },
+  "files": [
+    "src",
+    "dist"
+  ]
+}
