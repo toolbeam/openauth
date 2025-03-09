@@ -1,0 +1,22 @@
+{
+  "extends": "@tsconfig/node22/tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "declaration": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ES2022"
+    ],
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "src"
+  ]
+}
