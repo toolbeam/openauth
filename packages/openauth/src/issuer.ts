@@ -517,9 +517,17 @@ export function issuer<
         {
           async subject(type, id, unvalidated, subjectOpts) {
             const authorization = await getAuthorization(ctx)
-            const properties = unvalidated
-            if (input.subjects[type]) {
-              const validated = await input.success[type](properties)
+            let properties: any = unvalidated
+            const validator = input.subjects?.[type]
+            if (validator) {
+              const validated =
+                await validator["~standard"].validate(properties)
+              if (validated.issues) {
+                throw new Error(
+                  validated.issues.map((i) => i.message).join("\n"),
+                )
+              }
+              properties = validated.value
             }
             await successOpts?.invalidate?.(id)
             if (authorization.response_type === "token") {
@@ -527,7 +535,7 @@ export function issuer<
               const tokens = await generateTokens(ctx, {
                 subject: id,
                 type: type as string,
-                properties: validated,
+                properties,
                 clientID: authorization.client_id,
                 ttl: {
                   access: subjectOpts?.ttl?.access ?? ttlAccess,
