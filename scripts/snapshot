@@ -8,8 +8,8 @@ echo "Creating snapshot release: ${SNAPSHOT_ID}"
 
 # First build the packages
 echo "Building packages..."
-bun run --filter="@openauthjs/openauth" build
-bun run --filter="@openauthjs/solid" build
+(cd packages/openauth && bun run build)
+(cd packages/solid && bun run build)
 
 # Use changesets to create a snapshot release
 echo "Creating snapshot release with ID: ${SNAPSHOT_ID}"
