@@ -515,15 +515,19 @@ export function issuer<
     async success(ctx: Context, properties: any, successOpts) {
       return await input.success(
         {
-          async subject(type, id, properties, subjectOpts) {
+          async subject(type, id, unvalidated, subjectOpts) {
             const authorization = await getAuthorization(ctx)
+            const properties = unvalidated
+            if (input.subjects[type]) {
+              const validated = await input.success[type](properties)
+            }
             await successOpts?.invalidate?.(id)
             if (authorization.response_type === "token") {
               const location = new URL(authorization.redirect_uri)
               const tokens = await generateTokens(ctx, {
                 subject: id,
                 type: type as string,
-                properties,
+                properties: validated,
                 clientID: authorization.client_id,
                 ttl: {
                   access: subjectOpts?.ttl?.access ?? ttlAccess,

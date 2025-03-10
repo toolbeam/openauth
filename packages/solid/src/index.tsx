@@ -25,7 +25,7 @@ interface Context {
   subject?: SubjectInfo
   switch(id: string): void
   logout(id: string): void
-  access(): Promise<string | undefined>
+  access(id?: string): Promise<string | undefined>
   authorize(redirectPath?: string): void
 }
 
