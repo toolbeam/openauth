@@ -3,8 +3,7 @@
   "module": "index.ts",
   "type": "module",
   "workspaces": [
-    "packages/openauth",
-    "packages/solid",
+    "packages/*",
     "examples/issuer/*",
     "examples/client/*"
   ],
