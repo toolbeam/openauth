@@ -6,18 +6,6 @@ SNAPSHOT_ID=$(date +%Y%m%d%H%M%S)
 
 echo "Creating snapshot release: ${SNAPSHOT_ID}"
 
-# Create a temporary changeset file to force a version bump
-echo "Creating temporary changeset..."
-mkdir -p .changeset
-cat > .changeset/snapshot-${SNAPSHOT_ID}.md << EOF
----
-"@openauthjs/openauth": patch
-"@openauthjs/solid": patch
----
-
-Snapshot release ${SNAPSHOT_ID}
-EOF
-
 # First build the packages
 echo "Building packages..."
 bun run --filter="@openauthjs/openauth" build
@@ -33,13 +21,13 @@ sed -i 's/"@openauthjs\/openauth": "[^"]*"/"@openauthjs\/openauth": "workspace:*
 
 # Publish the snapshot versions
 echo "Publishing snapshot versions..."
-bun changeset publish --tag snapshot
+(cd packages/openauth && bun publish --tag snapshot)
+(cd packages/solid && bun publish --tag snapshot)
+
 
 # Reset versions in package.json files after snapshot publish
 echo "Resetting package versions..."
 git checkout -- packages/openauth/package.json packages/solid/package.json
 
-# Remove the temporary changeset file
-rm -f .changeset/snapshot-${SNAPSHOT_ID}.md
 
 echo "Snapshot release completed: ${SNAPSHOT_ID}"
