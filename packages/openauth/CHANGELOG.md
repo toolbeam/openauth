@@ -1,5 +1,43 @@
 # @openauthjs/openauth
 
+## 0.0.0-20250310005931
+
+### Patch Changes
+
+- Snapshot release 20250309205929
+
+## 0.0.0-20250309205835-20250310005837
+
+### Patch Changes
+
+- Snapshot release 20250309205835
+
+## 0.0.0-20250309184932-20250309224934
+
+### Patch Changes
+
+- Snapshot release 20250309184918
+- Snapshot release 20250309184932
+
+## 0.0.0-20250309183911-20250309223913
+
+### Patch Changes
+
+- Snapshot release 20250309183911
+
+## 0.0.0-20250309183848-20250309223850
+
+### Patch Changes
+
+- ec8ca65: include expires_in for refresh response
+- Snapshot release 20250309183848
+
+## 0.0.0-20250309183546.b99be98-20250309223547
+
+### Patch Changes
+
+- ec8ca65: include expires_in for refresh response
+
 ## 0.4.2
 
 ### Patch Changes

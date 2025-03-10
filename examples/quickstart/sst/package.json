@@ -9,7 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@openauthjs/openauth": "^0.3.2",
+    "@openauthjs/openauth": "workspace:*",
     "hono": "^4.6.16",
     "next": "15.1.4",
     "react": "^19.0.0",
