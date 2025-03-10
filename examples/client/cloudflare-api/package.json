@@ -1,5 +1,5 @@
 {
-  "name": "@openauthjs/cloudflare-api",
+  "name": "@openauthjs/example-cloudflare-api",
   "version": "0.0.0",
   "private": true
 }
