@@ -9,7 +9,8 @@
     "examples/client/*"
   ],
   "scripts": {
-    "release": "bun run --filter=\"@openauthjs/openauth\" build && bun run --filter=\"@openauthjs/solid\" build && changeset publish"
+    "release": "bun run --filter=\"@openauthjs/openauth\" build && bun run --filter=\"@openauthjs/solid\" build && changeset publish",
+    "publish:version": "changeset publish"
   },
   "devDependencies": {
     "@tsconfig/node22": "22.0.0",
