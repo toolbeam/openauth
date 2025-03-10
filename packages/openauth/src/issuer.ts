@@ -208,7 +208,7 @@ export const aws = awsHandle
 
 export interface IssuerInput<
   Providers extends Record<string, Provider<any>>,
-  Subjects extends SubjectSchema,
+  Subjects extends SubjectSchema = SubjectSchema,
   Result = {
     [key in keyof Providers]: Prettify<
       {
@@ -236,7 +236,7 @@ export interface IssuerInput<
    * })
    * ```
    */
-  subjects: Subjects
+  subjects?: Subjects
   /**
    * The storage adapter that you want to use.
    *

@@ -4,12 +4,10 @@ import {
   batch,
   createContext,
   createEffect,
-  createMemo,
   createSignal,
   onMount,
   ParentProps,
   Show,
-  untrack,
   useContext,
 } from "solid-js"
 import { createStore, produce } from "solid-js/store"
@@ -17,25 +15,23 @@ import { createStore, produce } from "solid-js/store"
 interface Storage {
   subjects: Record<
     string,
-    {
-      id: string
-      refresh: string
-    }
+    SubjectInfo
   >
   current?: string
 }
 
 interface Context {
-  subjects: Record<string, SubjectInfo>
-  current?: SubjectInfo
+  all: Record<string, SubjectInfo>
+  subject?: SubjectInfo
   switch(id: string): void
   logout(id: string): void
-  authorize(): void
+  access(): Promise<string | undefined>
+  authorize(redirectPath?: string): void
 }
 
 interface SubjectInfo {
   id: string
-  access(): Promise<string>
+  refresh: string
 }
 
 interface AuthContextOpts {
@@ -108,7 +104,7 @@ export function OpenAuthProvider(props: ParentProps<AuthContextOpts>) {
       access: existing,
     })
     if (access.err) {
-      ctx().logout(id)
+      ctx.logout(id)
       throw access.err
     }
     if (access.tokens) {
@@ -118,40 +114,35 @@ export function OpenAuthProvider(props: ParentProps<AuthContextOpts>) {
     return access.tokens?.access || existing!
   }
 
-  const ctx = createMemo<Context>(() => {
-    console.log("recomputing subject context")
-    const subjects: Record<string, SubjectInfo> = {}
-    for (const [key, value] of Object.entries(storage.subjects)) {
-      subjects[key] = {
-        get id() {
-          return value.id
-        },
-        async access() {
-          return untrack(() => access(key))
-        },
-      }
+
+  const ctx: Context = {
+    get all() {
+      return storage.subjects
+    },
+    get subject() {
+      if (!storage.current) return
+      return storage.subjects[storage.current!]
+    },
+    switch(id: string) {
+      if (!storage.subjects[id]) return
+      setStorage("current", id)
+    },
+    authorize,
+    logout(id: string) {
+      if (!storage.subjects[id]) return
+      setStorage(
+        produce((s) => {
+          delete s.subjects[id]
+          if (s.current === id) s.current = Object.keys(s.subjects)[0]
+        }),
+      )
+    },
+    async access(id?: string) {
+      id = id || storage.current
+      if (!id) return
+      return access(id || storage.current!)
     }
-    return {
-      subjects,
-      get current() {
-        return subjects[storage.current!]
-      },
-      switch(id: string) {
-        if (!storage.subjects[id]) return
-        setStorage("current", id)
-      },
-      authorize,
-      logout(id: string) {
-        if (!storage.subjects[id]) return
-        setStorage(
-          produce((s) => {
-            delete s.subjects[id]
-            if (s.current === id) s.current = Object.keys(s.subjects)[0]
-          }),
-        )
-      },
-    }
-  })
+  }
 
   createEffect(() => {
     if (!init()) return
@@ -166,7 +157,7 @@ export function OpenAuthProvider(props: ParentProps<AuthContextOpts>) {
 
   return (
     <Show when={init()}>
-      <context.Provider value={ctx()}>{props.children}</context.Provider>
+      <context.Provider value={ctx}>{props.children}</context.Provider>
     </Show>
   )
 }
