@@ -10,7 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@openauthjs/openauth": "^0.3.2",
+    "@openauthjs/openauth": "workspace:*",
     "next": "15.1.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
