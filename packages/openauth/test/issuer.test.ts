@@ -50,9 +50,10 @@ const issuerConfig = {
   },
   success: async (ctx, value) => {
     if (value.provider === "dummy") {
-      return ctx.subject("user", "123", {})
+      return ctx.subject("1", {
+        userID: "1",
+      })
     }
-    throw new Error("Invalid provider: " + value.provider)
   },
 }
 const auth = issuer(issuerConfig)
