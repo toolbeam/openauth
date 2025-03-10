@@ -1,0 +1,30 @@
+{
+  "name": "@openauthjs/react",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc"
+  },
+  "sideEffects": false,
+  "devDependencies": {
+    "@tsconfig/node22": "22.0.0",
+    "@types/react": "^18.2.0",
+    "typescript": "5.6.3"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "peerDependencies": {
+    "react": "^18.2.0"
+  },
+  "dependencies": {
+    "@openauthjs/openauth": "workspace:*"
+  },
+  "files": [
+    "src",
+    "dist"
+  ]
+}
