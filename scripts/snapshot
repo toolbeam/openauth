@@ -27,7 +27,7 @@ echo "Publishing snapshot versions..."
 
 # Reset versions in package.json files after snapshot publish
 echo "Resetting package versions..."
-git checkout -- packages/openauth/package.json packages/solid/package.json
+git checkout .
 
 
 echo "Snapshot release completed: ${SNAPSHOT_ID}"
