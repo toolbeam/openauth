@@ -152,7 +152,6 @@ export function OpenAuthProvider(props: ParentProps<AuthContextOpts>) {
       setStorage("current", first)
       return
     }
-    authorize()
   })
 
   return (
