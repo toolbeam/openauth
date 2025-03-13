@@ -62,6 +62,20 @@ function usePersistedState<T>(key: string, initialState: T): [T, Dispatch<SetSta
     }
   }, [key, state])
 
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === key && event.newValue !== null) {
+        try {
+          setState(JSON.parse(event.newValue))
+        } catch (error) {
+          console.error('Error parsing storage value:', error)
+        }
+      }
+    }
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [key])
+
   return [state, setState]
 }
 
@@ -77,7 +91,6 @@ export function OpenAuthProvider(props: AuthContextOpts) {
   const [storage, setStorage] = usePersistedState<Storage>(storageKey, { subjects: {} })
 
   const [initialized, setInitialized] = useState(false)
-  const accessCache = useMemo(() => new Map<string, string>(), [])
 
   useEffect(() => {
     const handleCode = async () => {
@@ -105,6 +118,10 @@ export function OpenAuthProvider(props: AuthContextOpts) {
             }))
           }
         }
+        const url = new URL(window.location.href)
+        url.searchParams.delete('code')
+        url.searchParams.delete('state')
+        window.history.replaceState({}, '', url)
       }
       setInitialized(true)
     }
@@ -126,33 +143,47 @@ export function OpenAuthProvider(props: AuthContextOpts) {
     window.location.href = authorize.url
   }, [client])
 
+  const accessCache = useMemo(() => new Map<string, string>(), [])
+  const pendingRequests = useMemo(() => new Map<string, Promise<any>>(), [])
   const getAccess = useCallback(async (id: string) => {
-    const subject = storage.subjects[id]
-    const existing = accessCache.get(id)
-    const access = await client.refresh(subject.refresh, {
-      access: existing,
-    })
-    if (access.err) {
-      ctx.logout(id)
-      throw access.err
+    const existingRequest = pendingRequests.get(id)
+    if (existingRequest) {
+      return existingRequest
     }
-    if (access.tokens) {
-      const tokens = access.tokens
-      setStorage(prev => ({
-        ...prev,
-        subjects: {
-          ...prev.subjects,
-          [id]: {
-            ...prev.subjects[id],
-            refresh: tokens.refresh
-          }
+    const request = (async () => {
+      try {
+        const subject = storage.subjects[id]
+        const existing = accessCache.get(id)
+        const access = await client.refresh(subject.refresh, {
+          access: existing,
+        })
+        if (access.err) {
+          ctx.logout(id)
+          return
         }
-      }))
-      accessCache.set(id, tokens.access)
-      return tokens.access
-    }
-    return existing!
-  }, [client, storage.subjects, accessCache])
+        if (access.tokens) {
+          const tokens = access.tokens
+          setStorage(prev => ({
+            ...prev,
+            subjects: {
+              ...prev.subjects,
+              [id]: {
+                ...prev.subjects[id],
+                refresh: tokens.refresh
+              }
+            }
+          }))
+          accessCache.set(id, tokens.access)
+          return tokens.access
+        }
+        return existing!
+      } finally {
+        pendingRequests.delete(id)
+      }
+    })()
+    pendingRequests.set(id, request)
+    return request
+  }, [client, storage.subjects, accessCache, pendingRequests])
 
   const ctx: Context = {
     get all() {
