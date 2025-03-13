@@ -23,7 +23,7 @@ interface Context {
   all: Record<string, SubjectInfo>
   subject?: SubjectInfo
   switch(id: string): void
-  logout(id: string): void
+  logout(id?: string): void
   access(id?: string): Promise<string | undefined>
   authorize(redirectPath?: string): void
 }
@@ -37,6 +37,7 @@ interface AuthContextOpts {
   issuer: string
   clientID: string
   children: ReactNode
+  onExpiry?: (id: string) => Promise<void>
 }
 
 const AuthContext = createContext<Context | undefined>(undefined)
@@ -159,6 +160,8 @@ export function OpenAuthProvider(props: AuthContextOpts) {
         })
         if (access.err) {
           ctx.logout(id)
+          if (props.onExpiry) await props.onExpiry(id)
+          else authorize()
           return
         }
         if (access.tokens) {
@@ -201,7 +204,9 @@ export function OpenAuthProvider(props: AuthContextOpts) {
       }))
     },
     authorize,
-    logout(id: string) {
+    logout(id?: string) {
+      id = id ?? storage.current
+      if (!id) return
       if (!storage.subjects[id]) return
       setStorage(prev => {
         const newSubjects = { ...prev.subjects }
