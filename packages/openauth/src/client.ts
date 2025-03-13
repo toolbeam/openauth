@@ -328,7 +328,9 @@ export interface VerifyResult<T extends SubjectSchema> {
     [type in keyof T]: {
       id: string
       type: type
-      properties: v1.InferOutput<T[type]>
+      properties: v1.InferOutput<T[type]> extends unknown
+        ? Record<string, any>
+        : v1.InferOutput<T[type]>
     }
   }[keyof T]
 }
