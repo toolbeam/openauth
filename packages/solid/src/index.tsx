@@ -97,21 +97,30 @@ export function OpenAuthProvider(props: ParentProps<AuthContextOpts>) {
   }
 
   const accessCache = new Map<string, string>()
+  const pendingRequests = new Map<string, Promise<any>>()
   async function access(id: string) {
-    const subject = storage.subjects[id]
-    const existing = accessCache.get(id)
-    const access = await client.refresh(subject.refresh, {
-      access: existing,
-    })
-    if (access.err) {
-      ctx.logout(id)
-      throw access.err
-    }
-    if (access.tokens) {
-      setStorage("subjects", id, "refresh", access.tokens.refresh)
-      accessCache.set(id, access.tokens.access)
-    }
-    return access.tokens?.access || existing!
+    const pending = pendingRequests.get(id)
+    if (pending) return pending
+    const promise = (async () => {
+      const existing = accessCache.get(id)
+      const subject = storage.subjects[id]
+      const access = await client.refresh(subject.refresh, {
+        access: existing,
+      })
+      if (access.err) {
+        pendingRequests.delete(id)
+        ctx.logout(id)
+        return
+      }
+      if (access.tokens) {
+        setStorage("subjects", id, "refresh", access.tokens.refresh)
+        accessCache.set(id, access.tokens.access)
+      }
+      pendingRequests.delete(id)
+      return access.tokens?.access || existing!
+    })()
+    pendingRequests.set(id, promise)
+    return promise
   }
 
 
