@@ -19,7 +19,7 @@ interface Storage {
   current?: string
 }
 
-interface Context {
+export interface Context {
   all: Record<string, SubjectInfo>
   subject?: SubjectInfo
   switch(id: string): void
@@ -37,7 +37,7 @@ interface AuthContextOpts {
   issuer: string
   clientID: string
   children: ReactNode
-  onExpiry?: (id: string) => Promise<void>
+  onExpiry?: (id: string, ctx: Context) => Promise<void>
 }
 
 const AuthContext = createContext<Context | undefined>(undefined)
@@ -160,7 +160,7 @@ export function OpenAuthProvider(props: AuthContextOpts) {
         })
         if (access.err) {
           ctx.logout(id)
-          if (props.onExpiry) await props.onExpiry(id)
+          if (props.onExpiry) await props.onExpiry(id, ctx)
           else authorize()
           return
         }
