@@ -34,7 +34,7 @@ export default issuer({
   },
   success: async (ctx, value) => {
     if (value.provider === "password") {
-      return ctx.subject("user", {
+      return ctx.subject("user", "123", {
         id: await getUser(value.email),
       })
     }

@@ -153,7 +153,9 @@ export interface OnSuccessResponder<
   subject<Type extends T["type"]>(
     type: Type,
     id: string,
-    properties: Extract<T, { type: Type }>["properties"],
+    properties: [Extract<T, { type: Type }>["properties"]] extends [never]
+      ? Record<string, any>
+      : Extract<T, { type: Type }>["properties"],
     opts?: {
       ttl?: {
         access?: number
@@ -1115,18 +1117,20 @@ export function issuer<
       issuer: issuer(c),
     })
 
-    const validated = await input.subjects![result.payload.type][
-      "~standard"
-    ].validate(result.payload.properties)
-
-    if (!validated.issues && result.payload.mode === "access") {
-      return c.json(validated.value as SubjectSchema)
+    let validated = result.payload.properties
+    const schema = input.subjects?.[result.payload.type]
+    if (schema) {
+      const result = await schema["~standard"].validate(validated)
+      if (result.issues) {
+        return c.json({
+          error: "invalid_token",
+          error_description: "Invalid token",
+        })
+      }
+      validated = result.value
     }
 
-    return c.json({
-      error: "invalid_token",
-      error_description: "Invalid token",
-    })
+    return c.json(validated as SubjectSchema)
   })
 
   app.onError(async (err, c) => {
