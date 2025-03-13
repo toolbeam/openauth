@@ -1115,7 +1115,7 @@ export function issuer<
       issuer: issuer(c),
     })
 
-    const validated = await input.subjects[result.payload.type][
+    const validated = await input.subjects![result.payload.type][
       "~standard"
     ].validate(result.payload.properties)
 
