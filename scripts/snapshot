@@ -10,6 +10,7 @@ echo "Creating snapshot release: ${SNAPSHOT_ID}"
 echo "Building packages..."
 (cd packages/openauth && bun run build)
 (cd packages/solid && bun run build)
+(cd packages/react && bun run build)
 
 # Use changesets to create a snapshot release
 echo "Creating snapshot release with ID: ${SNAPSHOT_ID}"
@@ -23,6 +24,7 @@ sed -i 's/"@openauthjs\/openauth": "[^"]*"/"@openauthjs\/openauth": "workspace:*
 echo "Publishing snapshot versions..."
 (cd packages/openauth && bun publish --tag snapshot)
 (cd packages/solid && bun publish --tag snapshot)
+(cd packages/react && bun publish --tag snapshot)
 
 
 # Reset versions in package.json files after snapshot publish
