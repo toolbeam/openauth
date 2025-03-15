@@ -16,4 +16,5 @@ jobs:
         with:
           bun-version: latest
       - run: bun install
+      - run: cd packages/openauth && bun run build
       - run: cd packages/openauth && bun test
