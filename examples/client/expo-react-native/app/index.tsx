@@ -26,7 +26,7 @@ export default function Index() {
 
   const [request, response, promptAsync] = useAuthRequest(
     {
-      clientId: "dudeclientid",
+      clientId: "clientid",
       usePKCE: true,
       redirectUri: redirectUri,
     },
@@ -40,7 +40,7 @@ export default function Index() {
       try {
         const exchangeTokenResponse = await exchangeCodeAsync(
           {
-            clientId: "dudeclientid",
+            clientId: "clientid",
             code: exchangeTokenReq,
             redirectUri: redirectUri,
             extraParams: {
