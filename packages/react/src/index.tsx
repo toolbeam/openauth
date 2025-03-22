@@ -19,13 +19,18 @@ interface Storage {
   current?: string
 }
 
+export interface AuthorizeOptions {
+  redirectPath?: string
+  provider?: string
+}
+
 export interface Context {
   all: Record<string, SubjectInfo>
   subject?: SubjectInfo
   switch(id: string): void
   logout(id?: string): void
   access(id?: string): Promise<string | undefined>
-  authorize(redirectPath?: string): void
+  authorize(opts?: AuthorizeOptions): void
 }
 
 interface SubjectInfo {
@@ -39,6 +44,7 @@ interface AuthContextOpts {
   children: ReactNode
   onExpiry?: (id: string, ctx: Context) => Promise<void>
 }
+
 
 const AuthContext = createContext<Context | undefined>(undefined)
 
@@ -130,12 +136,13 @@ export function OpenAuthProvider(props: AuthContextOpts) {
     handleCode()
   }, [client])
 
-  const authorize = useCallback(async (redirectPath?: string) => {
+  const authorize = useCallback(async (opts?: AuthorizeOptions) => {
     const redirect = new URL(
-      window.location.origin + (redirectPath ?? "/"),
+      window.location.origin + (opts?.redirectPath ?? "/"),
     ).toString()
     const authorize = await client.authorize(redirect, "code", {
       pkce: true,
+      provider: opts?.provider,
     })
     sessionStorage.setItem(`${STORAGE_PREFIX}.state`, authorize.challenge.state)
     sessionStorage.setItem(`${STORAGE_PREFIX}.redirect`, redirect)

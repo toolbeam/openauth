@@ -26,7 +26,12 @@ interface Context {
   switch(id: string): void
   logout(id: string): void
   access(id?: string): Promise<string | undefined>
-  authorize(redirectPath?: string): void
+  authorize(opts?: AuthorizeOptions): void
+}
+
+export interface AuthorizeOptions {
+  redirectPath?: string
+  provider?: string
 }
 
 interface SubjectInfo {
@@ -82,12 +87,13 @@ export function OpenAuthProvider(props: ParentProps<AuthContextOpts>) {
     setInit(true)
   })
 
-  async function authorize(redirectPath?: string) {
+  async function authorize(opts?: AuthorizeOptions) {
     const redirect = new URL(
-      window.location.origin + (redirectPath ?? "/"),
+      window.location.origin + (opts?.redirectPath ?? "/"),
     ).toString()
     const authorize = await client.authorize(redirect, "code", {
       pkce: true,
+      provider: opts?.provider,
     })
     sessionStorage.setItem("openauth.state", authorize.challenge.state)
     sessionStorage.setItem("openauth.redirect", redirect)
