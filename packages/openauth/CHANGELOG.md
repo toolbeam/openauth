@@ -1,5 +1,11 @@
 # @openauthjs/openauth
 
+## 0.4.4
+
+### Patch Changes
+
+- e89f282: add linkedin adapter
+
 ## 0.4.3
 
 ### Patch Changes
