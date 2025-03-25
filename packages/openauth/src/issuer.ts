@@ -830,7 +830,6 @@ export function issuer<
             400,
           )
         }
-        await Storage.remove(storage, key)
         if (payload.redirectURI !== form.get("redirect_uri")) {
           return c.json(
             {
@@ -879,6 +878,7 @@ export function issuer<
           }
         }
         const tokens = await generateTokens(c, payload)
+        await Storage.remove(storage, key)
         return c.json({
           access_token: tokens.access,
           expires_in: tokens.expiresIn,
