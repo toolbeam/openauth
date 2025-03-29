@@ -35,7 +35,6 @@
  */
 import { joinKey, splitKey, StorageAdapter } from "./storage.js"
 import { createStorage, type Driver as UnstorageDriver } from "unstorage"
-import memoryDriver from "unstorage/drivers/memory"
 
 type Entry = { value: Record<string, any> | undefined; expiry?: number }
 
@@ -43,7 +42,7 @@ export function UnStorage({
   driver,
 }: { driver?: UnstorageDriver } = {}): StorageAdapter {
   const store = createStorage<Entry>({
-    driver: driver || memoryDriver(),
+    driver: driver,
   })
 
   return {
