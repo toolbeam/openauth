@@ -480,6 +480,7 @@ export function issuer<
   }[keyof Providers],
 >(input: IssuerInput<Providers, Subjects, Result>) {
   basePath = input.basePath
+  basePath = basePath?.replace(/\/$/, "") // Remove trailing slash
   const error =
     input.error ??
     function (err) {
