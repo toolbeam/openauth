@@ -202,9 +202,15 @@ import { DynamoStorage } from "./storage/dynamo.js"
 import { MemoryStorage } from "./storage/memory.js"
 import { cors } from "hono/cors"
 import { logger } from "hono/logger"
+import { createMiddleware } from "hono/factory"
 
 /** @internal */
 export const aws = awsHandle
+
+/**
+ * @internal
+ */
+export let basePath: string | undefined = undefined
 
 export interface IssuerInput<
   Providers extends Record<string, Provider<any>>,
@@ -217,6 +223,30 @@ export interface IssuerInput<
     >
   }[keyof Providers],
 > {
+  /**
+   * With `basePath`, OpenAuth can be mounted on any sub-path of a domain.
+   *
+   * :::caution
+   * The `/.well-known` path still needs to be at the root path.
+   * Please rewrite from your reverse proxy to OpenAuth.
+   * :::
+   *
+   * @example
+   * ```ts title="issuer.ts"
+   * issuer({
+   *   basePath: "/auth",
+   * })
+   * ```
+   *
+   * The base path needs to be reflected in the issuer url for the client:
+   * ```ts title="client.ts"
+   * const client = createClient({
+   *   issuer: "https://example.com/authpath", // if OpenAuth is mounted at `/authpath`
+   *   clientID: "123",
+   * })
+   * ```
+   */
+  basePath?: string
   /**
    * The shape of the subjects that you want to return.
    *
@@ -452,6 +482,7 @@ export function issuer<
     >
   }[keyof Providers],
 >(input: IssuerInput<Providers, Subjects, Result>) {
+  basePath = input.basePath
   const error =
     input.error ??
     function (err) {
@@ -722,7 +753,8 @@ export function issuer<
   }
 
   function issuer(ctx: Context) {
-    return new URL(getRelativeUrl(ctx, "/")).origin
+    const url = new URL(getRelativeUrl(ctx, "/")).origin
+    return basePath ? `${url}${basePath}` : url
   }
 
   const app = new Hono<{
@@ -730,6 +762,29 @@ export function issuer<
       authorization: AuthorizationState
     }
   }>().use(logger())
+
+  // Only edit local redirects if baseP
+  if (basePath) {
+    app.use(
+      createMiddleware(async (c, next) => {
+        await next()
+
+        if (basePath) {
+          // Normalize the basePath (remove leading/trailing slashes)
+          const bp = basePath.replace(/^\/+|\/+$/g, "")
+
+          // Check if the response is a redirect
+          const loc = c.res.headers.get("Location")
+          if (loc && loc.startsWith("/")) {
+            // Prepend /{bp} to the local location (ensure a leading slash)
+            const newLoc = `/${bp}${loc}`
+            c.res.headers.set("Location", newLoc)
+          }
+        }
+        return c.res
+      }),
+    )
+  }
 
   for (const [name, value] of Object.entries(input.providers)) {
     const route = new Hono<any>()
