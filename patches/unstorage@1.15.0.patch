@@ -1,0 +1,13 @@
+diff --git a/dist/shared/unstorage.mNKHTF5Y.mjs b/dist/shared/unstorage.mNKHTF5Y.mjs
+index c0a736448313728923f30a4a699d8994a840810a..aa57aae299cc77129bc4ca24db09d950925fa740 100644
+--- a/dist/shared/unstorage.mNKHTF5Y.mjs
++++ b/dist/shared/unstorage.mNKHTF5Y.mjs
+@@ -109,7 +109,7 @@ function joinKeys(...keys) {
+ }
+ function normalizeBaseKey(base) {
+   base = normalizeKey(base);
+-  return base ? base + ":" : "";
++  return base;
+ }
+ function filterKeyByDepth(key, depth) {
+   if (depth === void 0) {
