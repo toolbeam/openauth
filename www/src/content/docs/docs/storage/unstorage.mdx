@@ -1,0 +1,62 @@
+---
+title: UnStorage
+editUrl: https://github.com/toolbeam/openauth/blob/master/packages/openauth/src/storage/unstorage.ts
+description: Reference doc for the UnStorage storage adapter.
+---
+
+import { Segment, Section, NestedTitle, InlineSection } from 'toolbeam-docs-theme/components'
+import { Tabs, TabItem } from '@astrojs/starlight/components'
+
+<div class="tsdoc">
+<Section type="about">
+Configure OpenAuth to use [UnStorage](https://unstorage.unjs.io/) as a storage adapter
+
+
+This enables you to use any UnStorage driver as a store.
+Please refer to [UnStorage docs](https://unstorage.unjs.io/drivers) for details on possible drivers.
+
+By default, it uses the memory driver.
+
+:::caution
+The default memory driver is not meant to be used in production.
+:::
+
+```ts
+import { UnStorage } from "@openauthjs/openauth/storage/unstorage"
+
+const storage = UnStorage()
+
+export default issuer({
+  storage,
+  // ...
+})
+```
+
+Optionally, you can specify a driver.
+
+```ts
+import fsDriver from "unstorage/drivers/fs";
+
+UnStorage({
+  driver: fsDriver({ base: "./tmp" }),
+})
+```
+</Section>
+---
+## Methods
+### MemoryStorage
+<Segment>
+<Section type="signature">
+```ts
+UnStorage( { driver?: UnstorageDriver } )
+```
+</Section>
+<Section type="parameters">
+#### Parameters
+- <p><code class="key">driver?</code> [<code class="type">UnStorage Driver</code>](https://unstorage.unjs.io/drivers)</p>
+</Section>
+<InlineSection>
+**Returns** <code class="type">StorageAdapter</code>
+</InlineSection>
+</Segment>
+</div>
