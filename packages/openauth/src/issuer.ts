@@ -751,8 +751,10 @@ export function issuer<
 
   function issuer(ctx: Context) {
     const host = new URL(getRelativeUrl(ctx, "/")).origin
+    if (!basePath) return host
+
     const url = new URL(host)
-    url.pathname = basePath ?? "/"
+    url.pathname = basePath
     return url.toString()
   }
 
