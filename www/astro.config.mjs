@@ -10,7 +10,7 @@ const url = "https://openauth.js.org"
 // https://astro.build/config
 export default defineConfig({
   site: url,
-  trailingSlash: 'always',
+  trailingSlash: "always",
   devToolbar: {
     enabled: false,
   },
@@ -76,10 +76,7 @@ export default defineConfig({
       components: {
         Hero: "./src/components/Hero.astro",
       },
-      customCss: [
-        "./src/custom.css",
-        "./src/styles/lander.css",
-      ],
+      customCss: ["./src/custom.css", "./src/styles/lander.css"],
       sidebar: [
         { label: "Intro", slug: "docs" },
         {
@@ -118,11 +115,21 @@ export default defineConfig({
         },
         {
           label: "UI",
-          items: ["docs/ui/theme", "docs/ui/select", "docs/ui/code", "docs/ui/password"],
+          items: [
+            "docs/ui/theme",
+            "docs/ui/select",
+            "docs/ui/code",
+            "docs/ui/password",
+          ],
         },
         {
           label: "Storage",
-          items: ["docs/storage/memory", "docs/storage/dynamo", "docs/storage/cloudflare"],
+          items: [
+            "docs/storage/memory",
+            "docs/storage/dynamo",
+            "docs/storage/cloudflare",
+            "docs/storage/unstorage",
+          ],
         },
       ],
     }),
