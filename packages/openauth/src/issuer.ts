@@ -219,17 +219,26 @@ export interface IssuerInput<
   }[keyof Providers],
 > {
   /**
-   * The base path of the issuer. This is used to generate URLs.
-   * Useful if the issuer is not at root url, e.g. behind a reverse proxy.
+   * With `basePath`, OpenAuth can be mounted on any sub-path of a domain.
    *
-   * **Caution: the `/.well-know/` routes still need to be at the root.**
-   * Please specify this rewrite in your reverse proxy.
+   * :::caution
+   * The `/.well-known` path still needs to be at the root path.
+   * Please rewrite from your reverse proxy to OpenAuth.
+   * :::
    *
    * @example
-   * ```ts
-   * {
-   *   basePath: "/auth"
-   * }
+   * ```ts title="issuer.ts"
+   * issuer({
+   *   basePath: "/auth",
+   * })
+   * ```
+   *
+   * The base path needs to be reflected in the issuer url for the client:
+   * ```ts title="client.ts"
+   * const client = createClient({
+   *   issuer: "https://example.com/authpath", // if OpenAuth is mounted at `/authpath`
+   *   clientID: "123",
+   * })
    * ```
    */
   basePath?: string
