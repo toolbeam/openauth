@@ -225,23 +225,20 @@ export interface IssuerInput<
 > {
   /**
    * With `basePath`, OpenAuth can be mounted on any sub-path of a domain.
-   *
-   * :::caution
-   * The `/.well-known` path still needs to be at the root path.
-   * Please rewrite from your reverse proxy to OpenAuth.
-   * :::
+   * This means OpenAuth can be nested in a larger app.
    *
    * @example
    * ```ts title="issuer.ts"
    * issuer({
    *   basePath: "/auth",
+   *   // ...
    * })
    * ```
    *
    * The base path needs to be reflected in the issuer url for the client:
    * ```ts title="client.ts"
    * const client = createClient({
-   *   issuer: "https://example.com/authpath", // if OpenAuth is mounted at `/authpath`
+   *   issuer: "https://example.com/auth", // if OpenAuth is mounted at `/authpath`
    *   clientID: "123",
    * })
    * ```
