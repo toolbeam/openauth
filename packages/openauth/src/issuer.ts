@@ -202,6 +202,7 @@ import { DynamoStorage } from "./storage/dynamo.js"
 import { MemoryStorage } from "./storage/memory.js"
 import { cors } from "hono/cors"
 import { logger } from "hono/logger"
+import { createMiddleware } from "hono/factory"
 
 /** @internal */
 export const aws = awsHandle
@@ -217,6 +218,21 @@ export interface IssuerInput<
     >
   }[keyof Providers],
 > {
+  /**
+   * The base path of the issuer. This is used to generate URLs.
+   * Useful if the issuer is not at root url, e.g. behind a reverse proxy.
+   *
+   * **Caution: the `/.well-know/` routes still need to be at the root.**
+   * Please specify this rewrite in your reverse proxy.
+   *
+   * @example
+   * ```ts
+   * {
+   *   basePath: "/auth"
+   * }
+   * ```
+   */
+  basePath?: string
   /**
    * The shape of the subjects that you want to return.
    *
@@ -730,6 +746,29 @@ export function issuer<
       authorization: AuthorizationState
     }
   }>().use(logger())
+
+  // Only edit local redirects if baseP
+  if (input.basePath) {
+    app.use(
+      createMiddleware(async (c, next) => {
+        await next()
+
+        if (input.basePath) {
+          // Normalize the basePath (remove leading/trailing slashes)
+          const bp = input.basePath.replace(/^\/+|\/+$/g, "")
+
+          // Check if the response is a redirect
+          const loc = c.res.headers.get("Location")
+          if (loc && loc.startsWith("/")) {
+            // Prepend /{bp} to the local location (ensure a leading slash)
+            const newLoc = `/${bp}${loc}`
+            c.res.headers.set("Location", newLoc)
+          }
+        }
+        return c.res
+      }),
+    )
+  }
 
   for (const [name, value] of Object.entries(input.providers)) {
     const route = new Hono<any>()
