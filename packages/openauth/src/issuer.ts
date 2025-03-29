@@ -753,7 +753,8 @@ export function issuer<
   }
 
   function issuer(ctx: Context) {
-    return new URL(getRelativeUrl(ctx, "/")).origin
+    const url = new URL(getRelativeUrl(ctx, "/")).origin
+    return basePath ? `${url}${basePath}` : url
   }
 
   const app = new Hono<{
