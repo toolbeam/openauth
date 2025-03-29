@@ -753,7 +753,10 @@ export function issuer<
   }
 
   function issuer(ctx: Context) {
-    return new URL(getRelativeUrl(ctx, "/")).origin
+    const host = new URL(getRelativeUrl(ctx, "/")).origin
+    const url = new URL(host)
+    url.pathname = basePath ?? "/"
+    return url.toString()
   }
 
   const app = new Hono<{
