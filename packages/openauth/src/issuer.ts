@@ -207,6 +207,11 @@ import { createMiddleware } from "hono/factory"
 /** @internal */
 export const aws = awsHandle
 
+/**
+ * @internal
+ */
+export let basePath: string | undefined = undefined
+
 export interface IssuerInput<
   Providers extends Record<string, Provider<any>>,
   Subjects extends SubjectSchema,
@@ -477,6 +482,7 @@ export function issuer<
     >
   }[keyof Providers],
 >(input: IssuerInput<Providers, Subjects, Result>) {
+  basePath = input.basePath
   const error =
     input.error ??
     function (err) {
@@ -757,14 +763,14 @@ export function issuer<
   }>().use(logger())
 
   // Only edit local redirects if baseP
-  if (input.basePath) {
+  if (basePath) {
     app.use(
       createMiddleware(async (c, next) => {
         await next()
 
-        if (input.basePath) {
+        if (basePath) {
           // Normalize the basePath (remove leading/trailing slashes)
-          const bp = input.basePath.replace(/^\/+|\/+$/g, "")
+          const bp = basePath.replace(/^\/+|\/+$/g, "")
 
           // Check if the response is a redirect
           const loc = c.res.headers.get("Location")
