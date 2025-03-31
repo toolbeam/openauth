@@ -555,7 +555,7 @@ export function createClient(input: ClientInput): Client {
     const cached = issuerCache.get(issuer!)
     if (cached) return cached
     const wellKnown = (await (f || fetch)(
-      `${issuer}/.well-known/oauth-authorization-server`,
+      new URL("/.well-known/oauth-authorization-server", issuer).toString(),
     ).then((r) => r.json())) as WellKnown
     issuerCache.set(issuer!, wellKnown)
     return wellKnown

@@ -227,6 +227,14 @@ export interface IssuerInput<
    * With `basePath`, OpenAuth can be mounted on any sub-path of a domain.
    * This means OpenAuth can be nested in a larger app.
    *
+   * :::caution
+   * The Well-Known endpoints still need to be at the root of the domain.
+   * You need to perform a proxy pass to the OpenAuth server for `/.well-known/oauth-authorization-server` and `/.well-known/jwks.json`.
+   *
+   * **Example:**<br/>
+   * If you mount OpenAuth at `/auth`, `/.well-known/oauth-authorization-server` and `/.well-known/jwks.json` need to be proxied to `/auth/.well-known/oauth-authorization-server` and `/auth/.well-known/jwks.json`.
+   * :::
+   *
    * @example
    * ```ts title="issuer.ts"
    * issuer({
@@ -837,7 +845,7 @@ export function issuer<
         issuer: iss,
         authorization_endpoint: `${iss}/authorize`,
         token_endpoint: `${iss}/token`,
-        jwks_uri: `${iss}/.well-known/jwks.json`,
+        jwks_uri: new URL("/.well-known/jwks.json", iss).toString(),
         response_types_supported: ["code", "token"],
       })
     },
