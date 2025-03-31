@@ -24,6 +24,7 @@
  */
 /** @jsxImportSource hono/jsx */
 
+import { basePath } from "../issuer.js"
 import { Layout } from "./base.js"
 
 export interface SelectProps {
@@ -72,7 +73,7 @@ export function Select(props?: SelectProps) {
             const icon = ICON[key]
             return (
               <a
-                href={`/${key}/authorize`}
+                href={`${basePath ? basePath : ""}/${key}/authorize`}
                 data-component="button"
                 data-color="ghost"
               >
