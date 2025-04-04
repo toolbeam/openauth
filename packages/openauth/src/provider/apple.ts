@@ -16,6 +16,24 @@
  * })
  * ```
  *
+ * #### Using OAuth with form_post response mode
+ * 
+ * When requesting name or email scopes from Apple, you must use form_post response mode:
+ * 
+ * ```ts {5-9}
+ * import { AppleProvider } from "@openauthjs/openauth/provider/apple"
+ *
+ * export default issuer({
+ *   providers: {
+ *     apple: AppleProvider({
+ *       clientID: "1234567890",
+ *       clientSecret: "0987654321",
+ *       responseMode: "form_post"
+ *     })
+ *   }
+ * })
+ * ```
+ *
  * #### Using OIDC
  *
  * ```ts {5-7}
@@ -36,7 +54,14 @@
 import { Oauth2Provider, Oauth2WrappedConfig } from "./oauth2.js"
 import { OidcProvider, OidcWrappedConfig } from "./oidc.js"
 
-export interface AppleConfig extends Oauth2WrappedConfig {}
+export interface AppleConfig extends Oauth2WrappedConfig {
+  /**
+   * The response mode to use for the authorization request.
+   * Apple requires 'form_post' response mode when requesting name or email scopes.
+   * @default "query"
+   */
+  responseMode?: "query" | "form_post"
+}
 export interface AppleOidcConfig extends OidcWrappedConfig {}
 
 /**
@@ -45,20 +70,37 @@ export interface AppleOidcConfig extends OidcWrappedConfig {}
  * @param config - The config for the provider.
  * @example
  * ```ts
+ * // Using default query response mode (GET callback)
  * AppleProvider({
  *   clientID: "1234567890",
  *   clientSecret: "0987654321"
  * })
+ * 
+ * // Using form_post response mode (POST callback)
+ * // Required when requesting name or email scope
+ * AppleProvider({
+ *   clientID: "1234567890",
+ *   clientSecret: "0987654321",
+ *   responseMode: "form_post",
+ *   scopes: ["name", "email"]
+ * })
  * ```
  */
 export function AppleProvider(config: AppleConfig) {
+  const { responseMode, ...restConfig } = config
+  const additionalQuery = responseMode === "form_post" 
+    ? { response_mode: "form_post", ...config.query } 
+    : config.query || {}
+
   return Oauth2Provider({
-    ...config,
+    ...restConfig,
     type: "apple" as const,
     endpoint: {
       authorization: "https://appleid.apple.com/auth/authorize",
       token: "https://appleid.apple.com/auth/token",
+      jwks: "https://appleid.apple.com/auth/keys",
     },
+    query: additionalQuery,
   })
 }
 
@@ -80,5 +122,6 @@ export function AppleOidcProvider(config: AppleOidcConfig) {
     ...config,
     type: "apple" as const,
     issuer: "https://appleid.apple.com",
+
   })
 }
