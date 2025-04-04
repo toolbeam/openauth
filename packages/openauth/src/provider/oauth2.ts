@@ -192,7 +192,6 @@ export function Oauth2Provider(
       idTokenPayload = payload;
     }
     
-    // Create tokenset with decoded ID token claims if available
     return ctx.success(c, {
       clientID: config.clientID,
       tokenset: {
