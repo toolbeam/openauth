@@ -77,6 +77,42 @@ export interface OidcConfig {
    * ```
    */
   query?: Record<string, string>
+  /**
+   * The response type to use for the OIDC flow.
+   * Use "id_token" for implicit flow or "code" for authorization code flow.
+   * Defaults to "id_token".
+   * 
+   * @example
+   * ```ts
+   * {
+   *   responseType: "code"
+   * }
+   * ```
+   */
+  responseType?: "id_token" | "code"
+  /**
+   * The client secret, required for authorization code flow.
+   * 
+   * @example
+   * ```ts
+   * {
+   *   clientSecret: "your-client-secret"
+   * }
+   * ```
+   */
+  clientSecret?: string
+  /**
+   * The token endpoint authentication method.
+   * Defaults to "client_secret_post".
+   * 
+   * @example
+   * ```ts
+   * {
+   *   tokenEndpointAuthMethod: "client_secret_basic"
+   * }
+   * ```
+   */
+  tokenEndpointAuthMethod?: "client_secret_post" | "client_secret_basic"
 }
 
 /**
@@ -99,11 +135,28 @@ export interface IdTokenResponse {
   raw: Record<string, any>
 }
 
+interface TokenResponse {
+  id_token: string
+  access_token?: string
+  token_type?: string
+  expires_in?: number
+  refresh_token?: string
+  [key: string]: unknown
+}
+
+interface ErrorResponse {
+  error?: string
+  error_description?: string
+  [key: string]: unknown
+}
+
 export function OidcProvider(
   config: OidcConfig,
 ): Provider<{ id: JWTPayload; clientID: string }> {
   const query = config.query || {}
   const scopes = config.scopes || []
+  const responseType = config.responseType || "id_token"
+  const tokenEndpointAuthMethod = config.tokenEndpointAuthMethod || "client_secret_post"
 
   const wk = lazy(() =>
     fetch(config.issuer + "/.well-known/openid-configuration").then(
@@ -138,7 +191,7 @@ export function OidcProvider(
           await wk().then((r) => r.authorization_endpoint),
         )
         authorization.searchParams.set("client_id", config.clientID)
-        authorization.searchParams.set("response_type", "id_token")
+        authorization.searchParams.set("response_type", responseType)
         authorization.searchParams.set("response_mode", "form_post")
         authorization.searchParams.set("state", provider.state)
         authorization.searchParams.set("nonce", provider.nonce)
@@ -160,14 +213,92 @@ export function OidcProvider(
             error.toString() as any,
             body.get("error_description")?.toString() || "",
           )
+        
+        // handle authorization code flow
+        const code = body.get("code")
+        if (code) {
+          if (!config.clientSecret) {
+            throw new OauthError(
+              "invalid_request" as const,
+              "Client secret is required for code flow"
+            )
+          }
+          
+          const tokenEndpoint = await wk().then((r) => r.token_endpoint)
+          const formData = new URLSearchParams()
+          formData.append("grant_type", "authorization_code")
+          formData.append("code", code.toString())
+          formData.append("redirect_uri", provider.redirect)
+
+          const headers: Record<string, string> = {
+            "Content-Type": "application/x-www-form-urlencoded",
+          }
+
+          if (tokenEndpointAuthMethod === "client_secret_post") {
+            formData.append("client_id", config.clientID)
+            formData.append("client_secret", config.clientSecret)
+          } else if (tokenEndpointAuthMethod === "client_secret_basic") {
+            const credentials = btoa(`${config.clientID}:${config.clientSecret}`)
+            headers["Authorization"] = `Basic ${credentials}`
+          }
+
+          const response = await fetch(tokenEndpoint, {
+            method: "POST",
+            headers,
+            body: formData,
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json() as ErrorResponse
+            throw new OauthError(
+              (errorData.error as any) || "server_error",
+              errorData.error_description || "Failed to exchange code for token"
+            )
+          }
+
+          const tokenResponse = await response.json() as TokenResponse
+          const idToken = tokenResponse.id_token
+
+          if (!idToken) {
+            throw new OauthError(
+              "invalid_request" as const,
+              "Missing id_token in token response"
+            )
+          }
+
+          const result = await jwtVerify(idToken, await jwks(), {
+            audience: config.clientID,
+          })
+          
+          if (result.payload.nonce !== provider.nonce) {
+            throw new OauthError(
+              "invalid_request" as const,
+              "Invalid nonce"
+            )
+          }
+          
+          return ctx.success(c, {
+            id: result.payload,
+            clientID: config.clientID,
+          })
+        }
+
+        // handle implicit flow
         const idToken = body.get("id_token")
-        if (!idToken)
-          throw new OauthError("invalid_request", "Missing id_token")
+        if (!idToken) {
+          throw new OauthError(
+            "invalid_request" as const,
+            "Missing id_token or code"
+          )
+        }
         const result = await jwtVerify(idToken.toString(), await jwks(), {
           audience: config.clientID,
         })
         if (result.payload.nonce !== provider.nonce) {
-          throw new OauthError("invalid_request", "Invalid nonce")
+          throw new OauthError(
+            "invalid_request" as const,
+            "Invalid nonce"
+          )
         }
         return ctx.success(c, {
           id: result.payload,
