@@ -1,6 +1,12 @@
 /**
  * Configures a provider that supports webauthn authentication. This is usually
  * paired with the `WebAuthnUI`.
+ * 
+ * This provider requires `@oslojs/webauthn` to be installed.
+ * 
+ * ```bash
+ * npm i @oslojs/webauthn
+ * ```
  *
  * ```ts
  * import { WebAuthnUI } from "@openauthjs/openauth/ui/webauthn"
@@ -122,7 +128,7 @@ export type WebAuthnProviderConfig<
   verifyAuthn?: (data: {
     credential: {
       id: Uint8Array
-      algorithm: number // (ES256)
+      algorithm: number
       publicKey: Uint8Array
     }
     claims: Record<string, string>

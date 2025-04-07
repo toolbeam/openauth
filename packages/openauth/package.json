@@ -30,6 +30,11 @@
       "types": "./dist/types/ui/index.d.ts"
     }
   },
+  "peerDependenciesMeta": {
+    "@oslojs/webauthn": {
+      "optional": true
+    }
+  },
   "peerDependencies": {
     "arctic": "^2.2.2",
     "hono": "^4.0.0",

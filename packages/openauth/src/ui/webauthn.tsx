@@ -1,3 +1,39 @@
+/**
+ * Configure the UI that's used by the WebAuthn provider.
+ *
+ * This provider requires `@oslojs/webauthn` to be installed.
+ * 
+ * ```bash
+ * npm i @oslojs/webauthn
+ * ```
+ * 
+ * ```ts
+ * import { WebAuthnUI } from "@openauthjs/openauth/ui/webauthn"
+ * import { WebAuthnProvider } from "@openauthjs/openauth/provider/webauthn"
+ *
+ * export default issuer({
+ *    passkey: WebAuthnProvider(
+ *      WebAuthnUI({
+ *        // options returned to the browser for navigator.credentials.get()
+ *        options: {
+ *          userVerification: "required",
+ *          rpId: "myapp.com", // optional, defaults to the domain of the issuer (auth.myapp.com)
+ *        },
+ *        async getCredential(id) {
+ *          const credential = await authService.getPasskeyCredential(id);
+ *
+ *          if (!credential) return null;
+ *          return { credential, claims: { userId: credential.userId } };
+ *        },
+ *      }),
+ *    ),
+ *   },
+ *   // ...
+ * })
+ * ```
+ *
+ * @packageDocumentation
+ */
 /** @jsxImportSource hono/jsx */
 
 import { Layout } from "./base.js"
@@ -45,25 +81,15 @@ export type WebAuthnUIOptions = {
    * @example
    * ```ts
    *  {
-   *    async verifyAuthn({
-   *      authenticatorData,
-   *      clientDataJSON,
-   *      credentialId,
-   *      signature,
-   *    }) {
-   *      const clientData = parseClientDataJSON(clientDataJSON);
+   *    async verifyAuthn(data) {
+   *      const clientData = parseClientDataJSON(data.raw.clientDataJSON);
    *
    *      if (clientData.type !== ClientDataType.Get) {
    *        return { error: "rejected" }
    *      }
    *      // ... other checks
-   *      // checkout oslo/webauth
-   *
-   *      const credential = await getCredentialFromDB(credentialId)
    *
    *      // decode & verify signature
-   *
-   *      return { claims: { userId: credential.userId } }
    *    }
    *  }
    * ```
@@ -85,7 +111,7 @@ export function WebAuthnUI(props: WebAuthnUIOptions): WebAuthnProviderOptions {
     rpId: props.options?.rpId,
     getCredential: props.getCredential,
     verifyAuthn: props.verifyAuthn,
-    request: async (req, state, _form, error): Promise<Response> => {
+    request: async (_req, state, _form, error): Promise<Response> => {
       const options = JSON.stringify({
         ...(props.options ?? {}),
         challenge: stringToBase64Url(state.challenge),
