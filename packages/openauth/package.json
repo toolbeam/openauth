@@ -30,9 +30,15 @@
       "types": "./dist/types/ui/index.d.ts"
     }
   },
+  "peerDependenciesMeta": {
+    "@oslojs/webauthn": {
+      "optional": true
+    }
+  },
   "peerDependencies": {
     "arctic": "^2.2.2",
-    "hono": "^4.0.0"
+    "hono": "^4.0.0",
+    "@oslojs/webauthn": "^1.0.0"
   },
   "dependencies": {
     "@standard-schema/spec": "1.0.0-beta.3",
