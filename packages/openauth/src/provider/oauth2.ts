@@ -145,18 +145,18 @@ export function Oauth2Provider(
   config: Oauth2Config,
 ): Provider<{ tokenset: Oauth2Token; clientID: string }> {
   const query = config.query || {}
-  
+
   // Helper function to handle token exchange and response building
   async function handleCallbackLogic(
-    c: any, 
-    ctx: any, 
-    provider: ProviderState, 
-    code: string | undefined
+    c: any,
+    ctx: any,
+    provider: ProviderState,
+    code: string | undefined,
   ) {
     if (!provider || !code) {
-      return c.redirect(getRelativeUrl(c, "./authorize"));
+      return c.redirect(getRelativeUrl(c, "./authorize"))
     }
-    
+
     const body = new URLSearchParams({
       client_id: config.clientID,
       client_secret: config.clientSecret,
@@ -166,8 +166,8 @@ export function Oauth2Provider(
       ...(provider.codeVerifier
         ? { code_verifier: provider.codeVerifier }
         : {}),
-    });
-    
+    })
+
     const json: any = await fetch(config.endpoint.token, {
       method: "POST",
       headers: {
@@ -175,46 +175,46 @@ export function Oauth2Provider(
         Accept: "application/json",
       },
       body: body.toString(),
-    }).then((r) => r.json());
-    
+    }).then((r) => r.json())
+
     if ("error" in json) {
-      throw new OauthError(json.error, json.error_description);
+      throw new OauthError(json.error, json.error_description)
     }
 
-    let idTokenPayload: Record<string, any> | null = null;
+    let idTokenPayload: Record<string, any> | null = null
     if (config.endpoint.jwks) {
-      const jwksEndpoint = new URL(config.endpoint.jwks);
+      const jwksEndpoint = new URL(config.endpoint.jwks)
       // @ts-expect-error bun/node mismatch
-      const jwks = createRemoteJWKSet(jwksEndpoint);
+      const jwks = createRemoteJWKSet(jwksEndpoint)
       const { payload } = await jwtVerify(json.id_token, jwks, {
         audience: config.clientID,
-      });
-      idTokenPayload = payload;
+      })
+      idTokenPayload = payload
     }
-    
+
     return ctx.success(c, {
       clientID: config.clientID,
       tokenset: {
         get access() {
-          return json.access_token;
+          return json.access_token
         },
         get refresh() {
-          return json.refresh_token;
+          return json.refresh_token
         },
         get expiry() {
-          return json.expires_in;
+          return json.expires_in
         },
         get id() {
-          if (!idTokenPayload) return null;
-          return idTokenPayload;
+          if (!idTokenPayload) return null
+          return idTokenPayload
         },
         get raw() {
-          return json;
+          return json
         },
       },
-    });
+    })
   }
-  
+
   return {
     type: config.type || "oauth2",
     init(routes, ctx) {
@@ -250,38 +250,46 @@ export function Oauth2Provider(
         const code = c.req.query("code")
         const state = c.req.query("state")
         const error = c.req.query("error")
-        
+
         if (error)
           throw new OauthError(
             error.toString() as any,
             c.req.query("error_description")?.toString() || "",
           )
-        if (!provider || !code || (provider.state && state !== provider.state)) {
+        if (
+          !provider ||
+          !code ||
+          (provider.state && state !== provider.state)
+        ) {
           return c.redirect(getRelativeUrl(c, "./authorize"))
         }
-        
+
         return handleCallbackLogic(c, ctx, provider, code)
       })
 
       routes.post("/callback", async (c) => {
         const provider = (await ctx.get(c, "provider")) as ProviderState
-        
+
         // Handle form data from POST request
         const formData = await c.req.formData()
         const code = formData.get("code")?.toString()
         const state = formData.get("state")?.toString()
         const error = formData.get("error")?.toString()
-        
+
         if (error)
           throw new OauthError(
             error as any,
             formData.get("error_description")?.toString() || "",
           )
-        
-        if (!provider || !code || (provider.state && state !== provider.state)) {
+
+        if (
+          !provider ||
+          !code ||
+          (provider.state && state !== provider.state)
+        ) {
           return c.redirect(getRelativeUrl(c, "./authorize"))
         }
-        
+
         return handleCallbackLogic(c, ctx, provider, code)
       })
     },

@@ -17,9 +17,9 @@
  * ```
  *
  * #### Using OAuth with form_post response mode
- * 
+ *
  * When requesting name or email scopes from Apple, you must use form_post response mode:
- * 
+ *
  * ```ts {5-9}
  * import { AppleProvider } from "@openauthjs/openauth/provider/apple"
  *
@@ -75,7 +75,7 @@ export interface AppleOidcConfig extends OidcWrappedConfig {}
  *   clientID: "1234567890",
  *   clientSecret: "0987654321"
  * })
- * 
+ *
  * // Using form_post response mode (POST callback)
  * // Required when requesting name or email scope
  * AppleProvider({
@@ -88,9 +88,10 @@ export interface AppleOidcConfig extends OidcWrappedConfig {}
  */
 export function AppleProvider(config: AppleConfig) {
   const { responseMode, ...restConfig } = config
-  const additionalQuery = responseMode === "form_post" 
-    ? { response_mode: "form_post", ...config.query } 
-    : config.query || {}
+  const additionalQuery =
+    responseMode === "form_post"
+      ? { response_mode: "form_post", ...config.query }
+      : config.query || {}
 
   return Oauth2Provider({
     ...restConfig,
@@ -122,6 +123,5 @@ export function AppleOidcProvider(config: AppleOidcConfig) {
     ...config,
     type: "apple" as const,
     issuer: "https://appleid.apple.com",
-
   })
 }
