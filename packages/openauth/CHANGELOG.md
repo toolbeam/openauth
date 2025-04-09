@@ -1,5 +1,13 @@
 # @openauthjs/openauth
 
+## 0.4.4
+
+### Patch Changes
+
+- 872a4cf: update google icon to comply with branding guidelines
+- 4214416: allow auth style autodetection
+- e89f282: add linkedin adapter
+
 ## 0.4.3
 
 ### Patch Changes
