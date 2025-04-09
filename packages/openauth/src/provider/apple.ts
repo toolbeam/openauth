@@ -114,7 +114,8 @@ export function AppleProvider(config: AppleConfig) {
  * @example
  * ```ts
  * AppleOidcProvider({
- *   clientID: "1234567890"
+ *   clientID: "1234567890",
+ *   clientSecret: "your-client-secret" // Required for Apple OIDC
  * })
  * ```
  */
@@ -123,5 +124,7 @@ export function AppleOidcProvider(config: AppleOidcConfig) {
     ...config,
     type: "apple" as const,
     issuer: "https://appleid.apple.com",
+    responseType: "code",
+    tokenEndpointAuthMethod: "client_secret_post",
   })
 }
