@@ -38,15 +38,14 @@
  *
  * @packageDocumentation
  */
+import type { v1 } from "@standard-schema/spec"
 import {
   createLocalJWKSet,
+  decodeJwt,
   errors,
   JSONWebKeySet,
   jwtVerify,
-  decodeJwt,
 } from "jose"
-import { SubjectSchema } from "./subject.js"
-import type { v1 } from "@standard-schema/spec"
 import {
   InvalidAccessTokenError,
   InvalidAuthorizationCodeError,
@@ -54,6 +53,7 @@ import {
   InvalidSubjectError,
 } from "./error.js"
 import { generatePKCE } from "./pkce.js"
+import { SubjectSchema } from "./subject.js"
 
 /**
  * The well-known information for an OAuth 2.0 authorization server.
@@ -178,6 +178,16 @@ export interface AuthorizeOptions {
    * If there's only one provider configured, the user will be redirected to that.
    */
   provider?: string
+  /**
+   * The scopes you want to request.
+   *
+   * @example
+   * ```ts
+   * {
+   *  scopes: ["read", "write"]
+   * }
+   */
+  scopes?: string[]
 }
 
 export interface AuthorizeResult {
@@ -321,6 +331,10 @@ export interface VerifyResult<T extends SubjectSchema> {
   subject: {
     [type in keyof T]: { type: type; properties: v1.InferOutput<T[type]> }
   }[keyof T]
+  /**
+   * The scopes of the token.
+   */
+  scopes?: string[]
 }
 
 /**
@@ -594,6 +608,7 @@ export function createClient(input: ClientInput): Client {
         result.searchParams.set("code_challenge", pkce.challenge)
         challenge.verifier = pkce.verifier
       }
+      if (opts?.scopes) result.searchParams.set("scope", opts.scopes.join(" "))
       return {
         challenge,
         url: result.toString(),
@@ -705,6 +720,7 @@ export function createClient(input: ClientInput): Client {
           mode: "access"
           type: keyof T
           properties: v1.InferInput<T[keyof T]>
+          scopes?: string[]
         }>(token, jwks, {
           issuer,
         })
@@ -718,6 +734,7 @@ export function createClient(input: ClientInput): Client {
               type: result.payload.type,
               properties: validated.value,
             } as any,
+            ...(result.payload.scopes ? { scopes: result.payload.scopes } : {}),
           }
         return {
           err: new InvalidSubjectError(),
