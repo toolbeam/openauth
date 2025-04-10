@@ -19,5 +19,8 @@
     "prettier": "3.4.2",
     "typescript": "5.6.3"
   },
-  "private": true
+  "private": true,
+  "patchedDependencies": {
+    "unstorage@1.15.0": "patches/unstorage@1.15.0.patch"
+  }
 }
