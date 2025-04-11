@@ -24,6 +24,7 @@
  */
 /** @jsxImportSource hono/jsx */
 
+import { basePath } from "../issuer.js"
 import { Layout } from "./base.js"
 import { ICON_GITHUB, ICON_GOOGLE } from "./icon.js"
 
@@ -73,7 +74,7 @@ export function Select(props?: SelectProps) {
             const icon = ICON[key]
             return (
               <a
-                href={`/${key}/authorize`}
+                href={`${basePath ? basePath : ""}/${key}/authorize`}
                 data-component="button"
                 data-color="ghost"
               >
