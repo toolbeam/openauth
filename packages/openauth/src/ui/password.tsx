@@ -7,7 +7,7 @@
  *
  * export default issuer({
  *   providers: {
- *     password: PasswordAdapter(
+ *     password: PasswordProvider(
  *       PasswordUI({
  *         copy: {
  *           error_email_taken: "This email is already taken."
