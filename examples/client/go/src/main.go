@@ -70,22 +70,7 @@ func main() {
 			return
 		}
 		if verified.Tokens != nil {
-			http.SetCookie(w, &http.Cookie{
-				Name:     "access_token",
-				Value:    verified.Tokens.Access,
-				MaxAge:   34560000,
-				SameSite: http.SameSiteStrictMode,
-				Path:     "/",
-				HttpOnly: true,
-			})
-			http.SetCookie(w, &http.Cookie{
-				Name:     "refresh_token",
-				Value:    verified.Tokens.Refresh,
-				MaxAge:   34560000,
-				SameSite: http.SameSiteStrictMode,
-				Path:     "/",
-				HttpOnly: true,
-			})
+			setCookies(w, verified.Tokens.Access, verified.Tokens.Refresh)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		// can do check on the type of the subject to get the correct type to cast to
@@ -97,7 +82,6 @@ func main() {
 	})
 	mux.HandleFunc("/authorize", func(w http.ResponseWriter, r *http.Request) {
 		origin := getOrigin(r.URL)
-		fmt.Printf("origin: %+v\n", origin)
 		redirectURI := origin + "/callback"
 		authorize, err := authClient.Authorize(redirectURI, "code", &client.AuthorizeOptions{})
 		if err != nil {
@@ -124,28 +108,29 @@ func main() {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		fmt.Printf("exchanged: %+v\n", exchanged)
-		fmt.Printf("exchanged.Tokens: %+v\n", exchanged.Tokens)
-		fmt.Printf("exchanged.Tokens.Access: %+v\n", exchanged.Tokens.Access)
-		fmt.Printf("exchanged.Tokens.Refresh: %+v\n", exchanged.Tokens.Refresh)
-		http.SetCookie(w, &http.Cookie{
-			Name:     "access_token",
-			Value:    exchanged.Tokens.Access,
-			MaxAge:   34560000,
-			SameSite: http.SameSiteStrictMode,
-			Path:     "/",
-			HttpOnly: true,
-		})
-		http.SetCookie(w, &http.Cookie{
-			Name:     "refresh_token",
-			Value:    exchanged.Tokens.Refresh,
-			MaxAge:   34560000,
-			SameSite: http.SameSiteStrictMode,
-			Path:     "/",
-			HttpOnly: true,
-		})
+
+		setCookies(w, exchanged.Tokens.Access, exchanged.Tokens.Refresh)
 		http.Redirect(w, r, origin, http.StatusSeeOther)
 	})
 
 	lambda.Start(httpadapter.NewV2(mux).ProxyWithContext)
+}
+
+func setCookies(w http.ResponseWriter, access, refresh string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    access,
+		MaxAge:   34560000,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+		HttpOnly: true,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refresh,
+		MaxAge:   34560000,
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+		HttpOnly: true,
+	})
 }
