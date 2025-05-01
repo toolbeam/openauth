@@ -12,6 +12,7 @@ import { createClient } from "../src/client.js"
 import { createSubjects } from "../src/subject.js"
 import { MemoryStorage } from "../src/storage/memory.js"
 import { Provider } from "../src/provider/provider.js"
+import { Hono } from "hono"
 
 const subjects = createSubjects({
   user: object({
@@ -389,5 +390,113 @@ describe("user info", () => {
     const userinfo = await response.json()
 
     expect(userinfo).toStrictEqual({ userID: "123" })
+  })
+})
+
+describe("code flow with basePath", () => {
+  test("success with basePath", async () => {
+    const customBasePath = "/custom-auth"
+    const bp = issuer({
+      ...issuerConfig,
+      basePath: customBasePath,
+    })
+    const authWithBasePath = new Hono()
+    authWithBasePath.route(customBasePath, bp)
+
+    const client = createClient({
+      issuer: "https://auth.example.com" + customBasePath,
+      clientID: "123",
+      fetch: (a, b) => Promise.resolve(authWithBasePath.request(a, b)),
+    })
+
+    const { challenge, url } = await client.authorize(
+      "https://client.example.com/callback",
+      "code",
+      {
+        pkce: true,
+      },
+    )
+
+    // Verify URL has the correct base path
+    expect(url).toContain(customBasePath)
+
+    let response = await authWithBasePath.request(url)
+    expect(response.status).toBe(302)
+
+    // Check that the location header is redirecting within the base path
+    const redirectLocation = response.headers.get("location")!
+    expect(redirectLocation).toContain(customBasePath)
+
+    response = await authWithBasePath.request(redirectLocation, {
+      headers: {
+        cookie: response.headers.get("set-cookie")!,
+      },
+    })
+    expect(response.status).toBe(302)
+    const location = new URL(response.headers.get("location")!)
+    const code = location.searchParams.get("code")
+    expect(code).not.toBeNull()
+
+    const exchanged = await client.exchange(
+      code!,
+      "https://client.example.com/callback",
+      challenge.verifier,
+    )
+    if (exchanged.err) throw exchanged.err
+    const tokens = exchanged.tokens
+    expect(tokens).toStrictEqual({
+      access: expectNonEmptyString,
+      refresh: expectNonEmptyString,
+      expiresIn: 60,
+    })
+
+    const verified = await client.verify(subjects, tokens.access)
+    if (verified.err) throw verified.err
+    expect(verified.subject).toStrictEqual({
+      type: "user",
+      properties: {
+        userID: "123",
+      },
+    })
+  })
+
+  test("JWKS and authorization server discovery with basePath", async () => {
+    const customBasePath = "/custom-auth"
+    const bp = issuer({
+      ...issuerConfig,
+      basePath: customBasePath,
+    })
+    const authWithBasePath = new Hono()
+    authWithBasePath.route(customBasePath, bp)
+
+    // Test JWKS endpoint
+    const jwksResponse = await authWithBasePath.request(
+      "https://auth.example.com" + customBasePath + "/.well-known/jwks.json",
+    )
+    expect(jwksResponse.status).toBe(200)
+    const jwksData = await jwksResponse.json()
+    expect(jwksData.keys).toBeDefined()
+    expect(Array.isArray(jwksData.keys)).toBe(true)
+
+    // Test OAuth authorization server metadata
+    const wellKnownResponse = await authWithBasePath.request(
+      "https://auth.example.com" +
+        customBasePath +
+        "/.well-known/oauth-authorization-server",
+    )
+    expect(wellKnownResponse.status).toBe(200)
+    const metadata = await wellKnownResponse.json()
+
+    // Check that the issuer and endpoints use the base path
+    expect(metadata.issuer).toBe("https://auth.example.com" + customBasePath)
+    expect(metadata.authorization_endpoint).toBe(
+      "https://auth.example.com" + customBasePath + "/authorize",
+    )
+    expect(metadata.token_endpoint).toBe(
+      "https://auth.example.com" + customBasePath + "/token",
+    )
+    expect(metadata.jwks_uri).toBe(
+      "https://auth.example.com" + customBasePath + "/.well-known/jwks.json",
+    )
   })
 })

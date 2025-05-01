@@ -202,9 +202,15 @@ import { DynamoStorage } from "./storage/dynamo.js"
 import { MemoryStorage } from "./storage/memory.js"
 import { cors } from "hono/cors"
 import { logger } from "hono/logger"
+import { createMiddleware } from "hono/factory"
 
 /** @internal */
 export const aws = awsHandle
+
+/**
+ * @internal
+ */
+export let basePath: string | undefined = undefined
 
 export interface IssuerInput<
   Providers extends Record<string, Provider<any>>,
@@ -217,6 +223,35 @@ export interface IssuerInput<
     >
   }[keyof Providers],
 > {
+  /**
+   * With `basePath`, OpenAuth can be mounted on any sub-path of a domain.
+   * This means OpenAuth can be nested in a larger app.
+   *
+   * :::caution
+   * The Well-Known endpoints still need to be at the root of the domain.
+   * You need to perform a proxy pass to the OpenAuth server for `/.well-known/oauth-authorization-server` and `/.well-known/jwks.json`.
+   *
+   * **Example:**<br/>
+   * If you mount OpenAuth at `/auth`, `/.well-known/oauth-authorization-server` and `/.well-known/jwks.json` need to be proxied to `/auth/.well-known/oauth-authorization-server` and `/auth/.well-known/jwks.json`.
+   * :::
+   *
+   * @example
+   * ```ts title="issuer.ts"
+   * issuer({
+   *   basePath: "/auth",
+   *   // ...
+   * })
+   * ```
+   *
+   * The base path needs to be reflected in the issuer url for the client:
+   * ```ts title="client.ts"
+   * const client = createClient({
+   *   issuer: "https://example.com/auth", // if OpenAuth is mounted at `/authpath`
+   *   clientID: "123",
+   * })
+   * ```
+   */
+  basePath?: string
   /**
    * The shape of the subjects that you want to return.
    *
@@ -452,6 +487,8 @@ export function issuer<
     >
   }[keyof Providers],
 >(input: IssuerInput<Providers, Subjects, Result>) {
+  basePath = input.basePath
+  basePath = basePath?.replace(/\/$/, "") // Remove trailing slash
   const error =
     input.error ??
     function (err) {
@@ -722,7 +759,12 @@ export function issuer<
   }
 
   function issuer(ctx: Context) {
-    return new URL(getRelativeUrl(ctx, "/")).origin
+    const host = new URL(getRelativeUrl(ctx, "/")).origin
+    if (!basePath) return host
+
+    const url = new URL(host)
+    url.pathname = basePath
+    return url.toString()
   }
 
   const app = new Hono<{
@@ -730,6 +772,29 @@ export function issuer<
       authorization: AuthorizationState
     }
   }>().use(logger())
+
+  // Only edit local redirects if baseP
+  if (basePath) {
+    app.use(
+      createMiddleware(async (c, next) => {
+        await next()
+
+        if (basePath) {
+          // Normalize the basePath (remove leading/trailing slashes)
+          const bp = basePath.replace(/^\/+|\/+$/g, "")
+
+          // Check if the response is a redirect
+          const loc = c.res.headers.get("Location")
+          if (loc && loc.startsWith("/")) {
+            // Prepend /{bp} to the local location (ensure a leading slash)
+            const newLoc = `/${bp}${loc}`
+            c.res.headers.set("Location", newLoc)
+          }
+        }
+        return c.res
+      }),
+    )
+  }
 
   for (const [name, value] of Object.entries(input.providers)) {
     const route = new Hono<any>()
@@ -780,7 +845,7 @@ export function issuer<
         issuer: iss,
         authorization_endpoint: `${iss}/authorize`,
         token_endpoint: `${iss}/token`,
-        jwks_uri: `${iss}/.well-known/jwks.json`,
+        jwks_uri: new URL("/.well-known/jwks.json", iss).toString(),
         response_types_supported: ["code", "token"],
       })
     },
