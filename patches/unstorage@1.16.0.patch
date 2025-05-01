@@ -1,0 +1,13 @@
+diff --git a/dist/shared/unstorage.CoCt7NXC.mjs b/dist/shared/unstorage.CoCt7NXC.mjs
+index bf498f41fce3403ca090ba91bb8d9772e38712f4..100cac0816b227db4e4b314246e2751f08eeeb0e 100644
+--- a/dist/shared/unstorage.CoCt7NXC.mjs
++++ b/dist/shared/unstorage.CoCt7NXC.mjs
+@@ -127,7 +127,7 @@ function joinKeys(...keys) {
+ }
+ function normalizeBaseKey(base) {
+   base = normalizeKey(base);
+-  return base ? base + ":" : "";
++  return base;
+ }
+ function filterKeyByDepth(key, depth) {
+   if (depth === void 0) {
