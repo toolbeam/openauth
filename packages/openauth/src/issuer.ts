@@ -1,5 +1,5 @@
 /**
- * The `issuer` create an OpentAuth server, a [Hono](https://hono.dev) app that's
+ * An `issuer` creates an OpenAuth server, a [Hono](https://hono.dev) app that's
  * designed to run anywhere.
  *
  * The `issuer` function requires a few things:
