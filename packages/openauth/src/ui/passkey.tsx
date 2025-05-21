@@ -2,8 +2,6 @@ import { PasskeyProviderConfig } from "../provider/passkey.js"
 import { Layout } from "./base.js"
 import { FormAlert } from "./form.js"
 
-import { AuthenticatorSelectionCriteria } from "@simplewebauthn/server"
-
 const DEFAULT_COPY = {
   /**
    * Copy for the register button.
