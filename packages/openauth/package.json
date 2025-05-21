@@ -35,6 +35,7 @@
     "hono": "^4.0.0"
   },
   "dependencies": {
+    "@simplewebauthn/server": "13.1.1",
     "@standard-schema/spec": "1.0.0-beta.3",
     "aws4fetch": "1.0.20",
     "jose": "5.9.6"
