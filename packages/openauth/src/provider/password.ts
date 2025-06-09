@@ -141,6 +141,47 @@ export interface PasswordConfig {
   validatePassword?:
     | v1.StandardSchema
     | ((password: string) => Promise<string | undefined> | string | undefined)
+  /**
+   * Controls whether new user registration is allowed.
+   *
+   * This allows implementing sign-up restrictions, domain validation,
+   * or completely disable sign-ups.
+   *
+   * @default true
+   *
+   * @example
+   * ```ts
+   * // Disable all registrations
+   * {
+   *   allowRegistration: false
+   * }
+   *
+   * // Allow only specific email domains
+   * {
+   *   allowRegistration: (email) => {
+   *     return email.endsWith("@company.com")
+   *   }
+   * }
+   * ```
+   */
+  allowRegistration?: boolean | ((email: string) => boolean | Promise<boolean>)
+  /**
+   * Callback to check if a user exists in an external system.
+   *
+   * Used when allowRegistration is false to validate existing users
+   * during password reset flow.
+   *
+   * @example
+   * ```ts
+   * {
+   *   userExists: async (email) => {
+   *     // Check your external user database
+   *     return await externalDB.userExists(email)
+   *   }
+   * }
+   * ```
+   */
+  userExists?: (email: string) => boolean | Promise<boolean>
 }
 
 /**
@@ -172,6 +213,7 @@ export type PasswordRegisterState =
  * | `invalid_code` | The code is invalid. |
  * | `invalid_password` | The password is invalid. |
  * | `password_mismatch` | The passwords do not match. |
+ * | `registration_not_allowed` | Registration is not allowed for this email. |
  */
 export type PasswordRegisterError =
   | {
@@ -192,6 +234,9 @@ export type PasswordRegisterError =
   | {
       type: "validation_error"
       message?: string
+    }
+  | {
+      type: "registration_not_allowed"
     }
 
 /**
@@ -311,6 +356,9 @@ export function PasswordProvider(
       })
 
       routes.get("/register", async (c) => {
+        if (config.allowRegistration === false) {
+          return c.redirect(getRelativeUrl(c, "./authorize"), 302)
+        }
         const state: PasswordRegisterState = {
           type: "start",
         }
@@ -341,6 +389,20 @@ export function PasswordProvider(
           const password = fd.get("password")?.toString()
           const repeat = fd.get("repeat")?.toString()
           if (!email) return transition(provider, { type: "invalid_email" })
+
+          // Check if registration is allowed for this email
+          if (config.allowRegistration !== undefined) {
+            let allowed = true
+            if (typeof config.allowRegistration === "boolean") {
+              allowed = config.allowRegistration
+            } else if (typeof config.allowRegistration === "function") {
+              allowed = await config.allowRegistration(email)
+            }
+            if (!allowed) {
+              return transition(provider, { type: "registration_not_allowed" })
+            }
+          }
+
           if (!password)
             return transition(provider, { type: "invalid_password" })
           if (password !== repeat)
@@ -481,7 +543,27 @@ export function PasswordProvider(
             provider.email,
             "password",
           ])
-          if (!existing) return c.redirect(provider.redirect, 302)
+
+          // If user doesn't exist in storage, check if they exist in external system
+          // Only do this when registrations are disabled (allowRegistration === false)
+          if (!existing) {
+            if (config.allowRegistration === false && config.userExists) {
+              if (await config.userExists(provider.email)) {
+                // Create user in storage so password can be set
+                await Storage.set(
+                  ctx.storage,
+                  ["email", provider.email, "password"],
+                  Math.random().toString(36), // Temporary placeholder that will be replaced
+                )
+              } else {
+                // User doesn't exist in external system, redirect to login
+                return c.redirect(provider.redirect, 302)
+              }
+            } else {
+              // Registration allowed or no userExists callback, use default behavior (redirect to login)
+              return c.redirect(provider.redirect, 302)
+            }
+          }
 
           const password = fd.get("password")?.toString()
           const repeat = fd.get("repeat")?.toString()

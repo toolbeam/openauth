@@ -60,6 +60,10 @@ const DEFAULT_COPY = {
    */
   error_validation_error: "Password does not meet requirements.",
   /**
+   * Error message when registration is not allowed.
+   */
+  error_registration_not_allowed: "Registration is not allowed.",
+  /**
    * Title of the register page.
    */
   register_title: "Welcome to the app",
@@ -128,6 +132,14 @@ const DEFAULT_COPY = {
    * Copy for the continue button.
    */
   button_continue: "Continue",
+  /**
+   * Copy for the first-time login message.
+   */
+  first_time_prompt: "First time logging in?",
+  /**
+   * Copy for the reset password link for first-time users.
+   */
+  first_time_reset: "Reset your password",
 } satisfies {
   [key in `error_${
     | PasswordLoginError["type"]
@@ -141,7 +153,10 @@ type PasswordUICopy = typeof DEFAULT_COPY
  * Configure the password UI.
  */
 export interface PasswordUIOptions
-  extends Pick<PasswordConfig, "sendCode" | "validatePassword"> {
+  extends Pick<
+    PasswordConfig,
+    "sendCode" | "validatePassword" | "allowRegistration" | "userExists"
+  > {
   /**
    * Custom copy for the UI.
    */
@@ -160,6 +175,8 @@ export function PasswordUI(input: PasswordUIOptions): PasswordConfig {
   return {
     validatePassword: input.validatePassword,
     sendCode: input.sendCode,
+    allowRegistration: input.allowRegistration,
+    userExists: input.userExists,
     login: async (_req, form, error): Promise<Response> => {
       const jsx = (
         <Layout>
@@ -185,16 +202,28 @@ export function PasswordUI(input: PasswordUIOptions): PasswordConfig {
             />
             <button data-component="button">{copy.button_continue}</button>
             <div data-component="form-footer">
-              <span>
-                {copy.register_prompt}{" "}
-                <a data-component="link" href="register">
-                  {copy.register}
-                </a>
-              </span>
+              {input.allowRegistration !== false && (
+                <span>
+                  {copy.register_prompt}{" "}
+                  <a data-component="link" href="register">
+                    {copy.register}
+                  </a>
+                </span>
+              )}
               <a data-component="link" href="change">
                 {copy.change_prompt}
               </a>
             </div>
+            {input.allowRegistration === false && input.userExists && (
+              <div data-component="form-footer">
+                <span>
+                  {copy.first_time_prompt}{" "}
+                  <a data-component="link" href="change">
+                    {copy.first_time_reset}
+                  </a>
+                </span>
+              </div>
+            )}
           </form>
         </Layout>
       )
