@@ -776,12 +776,24 @@ export function issuer<
     }),
     async (c) => {
       const iss = issuer(c)
+
+      // Check if any provider supports client credentials
+      const supportsClientCredentials = Object.values(input.providers).some(
+        (provider) => provider.client !== undefined,
+      )
+
+      const grantTypes = ["authorization_code", "refresh_token"]
+      if (supportsClientCredentials) {
+        grantTypes.push("client_credentials")
+      }
+
       return c.json({
         issuer: iss,
         authorization_endpoint: `${iss}/authorize`,
         token_endpoint: `${iss}/token`,
         jwks_uri: `${iss}/.well-known/jwks.json`,
         response_types_supported: ["code", "token"],
+        grant_types_supported: grantTypes,
       })
     },
   )
@@ -881,6 +893,7 @@ export function issuer<
         await Storage.remove(storage, key)
         return c.json({
           access_token: tokens.access,
+          token_type: "Bearer",
           expires_in: tokens.expiresIn,
           refresh_token: tokens.refresh,
         })
@@ -949,6 +962,7 @@ export function issuer<
         })
         return c.json({
           access_token: tokens.access,
+          token_type: "Bearer",
           refresh_token: tokens.refresh,
           expires_in: tokens.expiresIn,
         })
@@ -980,20 +994,25 @@ export function issuer<
         return input.success(
           {
             async subject(type, properties, opts) {
-              const tokens = await generateTokens(c, {
-                type: type as string,
-                subject:
-                  opts?.subject || (await resolveSubject(type, properties)),
-                properties,
-                clientID: clientID.toString(),
-                ttl: {
-                  access: opts?.ttl?.access ?? ttlAccess,
-                  refresh: opts?.ttl?.refresh ?? ttlRefresh,
+              const tokens = await generateTokens(
+                c,
+                {
+                  type: type as string,
+                  subject:
+                    opts?.subject || (await resolveSubject(type, properties)),
+                  properties,
+                  clientID: clientID.toString(),
+                  ttl: {
+                    access: opts?.ttl?.access ?? ttlAccess,
+                    refresh: opts?.ttl?.refresh ?? ttlRefresh,
+                  },
                 },
-              })
+                { generateRefreshToken: false },
+              )
               return c.json({
                 access_token: tokens.access,
-                refresh_token: tokens.refresh,
+                token_type: "Bearer",
+                expires_in: tokens.expiresIn,
               })
             },
           },
