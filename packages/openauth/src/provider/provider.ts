@@ -8,7 +8,7 @@ export interface Provider<Properties = any> {
   init: (route: ProviderRoute, options: ProviderOptions<Properties>) => void
   client?: (input: {
     clientID: string
-    clientSecret: string
+    clientSecret?: string,
     params: Record<string, string>
   }) => Promise<Properties>
 }

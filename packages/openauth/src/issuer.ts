@@ -955,54 +955,72 @@ export function issuer<
       }
 
       if (grantType === "client_credentials") {
-        const provider = form.get("provider")
+        const provider = form.get("provider")?.toString(); 
         if (!provider)
           return c.json({ error: "missing `provider` form value" }, 400)
-        const match = input.providers[provider.toString()]
-        if (!match)
-          return c.json({ error: "invalid `provider` query parameter" }, 400)
-        if (!match.client)
+        const match = input.providers[provider];
+        if (!match) {
           return c.json(
-            { error: "this provider does not support client_credentials" },
+            { error: "invalid_request", error_description: `Invalid provider: ${provider}` },
             400,
-          )
-        const clientID = form.get("client_id")
-        const clientSecret = form.get("client_secret")
-        if (!clientID)
+          );
+        }
+        if (!match.client) {
+          return c.json(
+            { error: "unsupported_grant_type", error_description: `Provider "${provider}" does not support client_credentials` },
+            400,
+          );
+        }
+
+        const clientID = form.get("client_id")?.toString();
+        const clientSecret = form.get("client_secret")?.toString();
+
+        if (!clientID) {
           return c.json({ error: "missing `client_id` form value" }, 400)
-        if (!clientSecret)
-          return c.json({ error: "missing `client_secret` form value" }, 400)
-        const response = await match.client({
-          clientID: clientID.toString(),
-          clientSecret: clientSecret.toString(),
-          params: Object.fromEntries(form) as Record<string, string>,
-        })
-        return input.success(
-          {
-            async subject(type, properties, opts) {
-              const tokens = await generateTokens(c, {
-                type: type as string,
-                subject:
-                  opts?.subject || (await resolveSubject(type, properties)),
-                properties,
-                clientID: clientID.toString(),
-                ttl: {
-                  access: opts?.ttl?.access ?? ttlAccess,
-                  refresh: opts?.ttl?.refresh ?? ttlRefresh,
-                },
-              })
-              return c.json({
-                access_token: tokens.access,
-                refresh_token: tokens.refresh,
-              })
+        }
+
+        try {
+          const response = await match.client({
+            clientID: clientID, 
+            clientSecret: clientSecret,
+            params: Object.fromEntries(form) as Record<string, string>, 
+          })
+          return input.success(
+            {
+              async subject(type, properties, opts) {
+                const tokens = await generateTokens(c, {
+                  type: type as string,
+                  subject:
+                    opts?.subject || (await resolveSubject(type, properties)),
+                  properties,
+                  clientID: clientID, 
+                  ttl: {
+                    access: opts?.ttl?.access ?? ttlAccess,
+                    refresh: opts?.ttl?.refresh ?? ttlRefresh,
+                  },
+                });
+                return c.json({
+                  access_token: tokens.access,
+                  refresh_token: tokens.refresh,
+                })
+              },
             },
-          },
-          {
-            provider: provider.toString(),
-            ...response,
-          },
-          c.req.raw,
-        )
+            {
+              provider: provider, 
+              ...response, 
+            },
+            c.req.raw,
+          );
+        } catch (err: any) {
+          // Handle errors from the provider's client function
+          const oauthError = err instanceof OauthError 
+            ? err 
+            : new OauthError("invalid_grant", err.message || "Client validation failed");
+          return c.json(
+            { error: oauthError.error, error_description: oauthError.description },
+            400,
+          );
+        }
       }
 
       throw new Error("Invalid grant_type")
