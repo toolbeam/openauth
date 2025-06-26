@@ -41,7 +41,7 @@ import { UnknownStateError } from "../error.js"
 import { Storage } from "../storage/storage.js"
 import { Provider } from "./provider.js"
 import { generateUnbiasedDigits, timingSafeCompare } from "../random.js"
-import { v1 } from "@standard-schema/spec"
+import { StandardSchemaV1 } from "@standard-schema/spec"
 
 /**
  * @internal
@@ -139,7 +139,7 @@ export interface PasswordConfig {
    * ```
    */
   validatePassword?:
-    | v1.StandardSchema
+    | StandardSchemaV1
     | ((password: string) => Promise<string | undefined> | string | undefined)
 }
 
