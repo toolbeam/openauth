@@ -130,7 +130,7 @@ import { Hono } from "hono/tiny"
 import { handle as awsHandle } from "hono/aws-lambda"
 import { Context } from "hono"
 import { deleteCookie, getCookie, setCookie } from "hono/cookie"
-import type { v1 } from "@standard-schema/spec"
+import type { StandardSchemaV1 } from "@standard-schema/spec"
 
 /**
  * Sets the subject payload in the JWT token and returns the response.
@@ -1117,7 +1117,9 @@ export function issuer<
     const result = await jwtVerify<{
       mode: "access"
       type: keyof SubjectSchema
-      properties: v1.InferInput<SubjectSchema[keyof SubjectSchema]>
+      properties: StandardSchemaV1.InferInput<
+        SubjectSchema[keyof SubjectSchema]
+      >
     }>(token, () => signingKey().then((item) => item.public), {
       issuer: issuer(c),
     })

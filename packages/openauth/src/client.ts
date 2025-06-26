@@ -46,7 +46,7 @@ import {
   decodeJwt,
 } from "jose"
 import { SubjectSchema } from "./subject.js"
-import type { v1 } from "@standard-schema/spec"
+import type { StandardSchemaV1 } from "@standard-schema/spec"
 import {
   InvalidAccessTokenError,
   InvalidAuthorizationCodeError,
@@ -319,7 +319,10 @@ export interface VerifyResult<T extends SubjectSchema> {
    * Has the same shape as the subjects you defined when creating the issuer.
    */
   subject: {
-    [type in keyof T]: { type: type; properties: v1.InferOutput<T[type]> }
+    [type in keyof T]: {
+      type: type
+      properties: StandardSchemaV1.InferOutput<T[type]>
+    }
   }[keyof T]
 }
 
@@ -704,7 +707,7 @@ export function createClient(input: ClientInput): Client {
         const result = await jwtVerify<{
           mode: "access"
           type: keyof T
-          properties: v1.InferInput<T[keyof T]>
+          properties: StandardSchemaV1.InferInput<T[keyof T]>
         }>(token, jwks, {
           issuer,
         })
