@@ -136,6 +136,7 @@ const app = issuer({
 Next up is the `subjects` field. Subjects are what the access token generated at the end of the auth flow will map to. Under the hood, the access token is a JWT that contains this data. You will likely just have a single subject to start but you can define additional ones for different types of users.
 
 ```ts title="subjects.ts"
+import { createSubjects } from "@openauthjs/openauth/subject"
 import { object, string } from "valibot"
 
 const subjects = createSubjects({
