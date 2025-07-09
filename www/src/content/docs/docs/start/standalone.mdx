@@ -258,6 +258,7 @@ Once the user is authenticated, we redirect them to the root of our app.
 Now we are ready to add authentication to our app. Replace the `<Home />` component in `app/page.tsx` with the following.
 
 ```tsx title="app/page.tsx"
+import Image from "next/image"
 import { auth, login, logout } from "./actions"
 
 export default async function Home() {
