@@ -969,17 +969,28 @@ export function issuer<
       }
 
       if (grantType === "client_credentials") {
-        const provider = form.get("provider")
-        if (!provider)
-          return c.json({ error: "missing `provider` form value" }, 400)
-        const match = input.providers[provider.toString()]
-        if (!match)
-          return c.json({ error: "invalid `provider` query parameter" }, 400)
-        if (!match.client)
+        // Auto-detect provider that supports client credentials
+        const clientCredentialsProviders = Object.entries(
+          input.providers,
+        ).filter(([_, p]) => p.client)
+
+        if (clientCredentialsProviders.length === 0) {
           return c.json(
-            { error: "this provider does not support client_credentials" },
+            { error: "no providers support client_credentials" },
             400,
           )
+        }
+
+        // Use the first provider that supports client credentials
+        const [selectedProvider, match] = clientCredentialsProviders[0]
+        
+        if (!match || !match.client) {
+          return c.json(
+            { error: "no valid provider found for client_credentials" },
+            400,
+          )
+        }
+        
         const clientID = form.get("client_id")
         const clientSecret = form.get("client_secret")
         if (!clientID)
@@ -1017,7 +1028,7 @@ export function issuer<
             },
           },
           {
-            provider: provider.toString(),
+            provider: selectedProvider,
             ...response,
           },
           c.req.raw,

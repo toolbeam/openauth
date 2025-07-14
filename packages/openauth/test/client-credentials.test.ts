@@ -246,39 +246,6 @@ describe("ClientCredentialsProvider", () => {
     expect(response.status).toBe(400)
   })
 
-  test("missing provider parameter", async () => {
-    const app = issuer({
-      storage: MemoryStorage(),
-      subjects,
-      providers: {
-        clientCredentials: ClientCredentialsProvider({
-          async verify() {
-            return { scopes: ["read"] }
-          },
-        }),
-      },
-      async success(ctx, value) {
-        return ctx.subject("service", {
-          serviceID: value.clientID,
-        })
-      },
-    })
-
-    const response = await app.request("/token", {
-      method: "POST",
-      body: new URLSearchParams({
-        grant_type: "client_credentials",
-        // missing provider parameter
-        client_id: "service-a",
-        client_secret: "secret-a",
-      }),
-    })
-
-    expect(response.status).toBe(400)
-    const body = await response.json()
-    expect(body.error).toBeDefined()
-  })
-
   test("async verify function error handling", async () => {
     const app = issuer({
       storage: MemoryStorage(),
