@@ -162,6 +162,11 @@ const FRONTMATTER: Record<
     description: "Reference doc for the `CodeProvider`.",
     editUrl: `${config.github}/blob/master/packages/openauth/src/provider/code.ts`,
   },
+  "client-credentials": {
+    title: "ClientCredentialsProvider",
+    description: "Reference doc for the `ClientCredentialsProvider`.",
+    editUrl: `${config.github}/blob/master/packages/openauth/src/provider/client-credentials.ts`,
+  },
 }
 
 renderSubject()
@@ -880,6 +885,7 @@ async function build() {
       "../packages/openauth/src/provider/discord.ts",
       "../packages/openauth/src/provider/cognito.ts",
       "../packages/openauth/src/provider/x.ts",
+      "../packages/openauth/src/provider/client-credentials.ts",
       "../packages/openauth/src/subject.ts",
       "../packages/openauth/src/ui/theme.ts",
       "../packages/openauth/src/ui/code.tsx",
