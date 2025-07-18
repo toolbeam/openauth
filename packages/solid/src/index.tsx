@@ -11,6 +11,7 @@ import {
   useContext,
 } from "solid-js"
 import { createStore, produce } from "solid-js/store"
+import { isServer } from "solid-js/web"
 
 interface Storage {
   subjects: Record<
@@ -170,7 +171,7 @@ export function OpenAuthProvider(props: ParentProps<AuthContextOpts>) {
   })
 
   return (
-    <Show when={init()}>
+    <Show when={init() || isServer}>
       <context.Provider value={ctx}>{props.children}</context.Provider>
     </Show>
   )
