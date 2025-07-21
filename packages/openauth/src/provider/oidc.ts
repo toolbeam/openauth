@@ -7,7 +7,7 @@
  * export default issuer({
  *   providers: {
  *     oauth2: OidcProvider({
- *       clientId: "1234567890",
+ *       clientID: "1234567890",
  *       issuer: "https://auth.myserver.com"
  *     })
  *   }
