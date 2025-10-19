@@ -304,6 +304,49 @@ const verified = await client.verify(subjects, accessToken)
 console.log(verified.subject)
 ```
 
+#### Resource Indicators
+
+Use the `resource` parameter to request audience‑restricted access tokens.
+
+- Request a single resource at authorization:
+
+```ts
+const { challenge, url } = await client.authorize(redirect_uri, "code", {
+  pkce: true,
+  resource: ["https://api.myserver.com/"],
+})
+```
+
+- Request consent for a small set, then select one at the token step:
+
+```ts
+const { challenge, url } = await client.authorize(redirect_uri, "code", {
+  pkce: true,
+  resource: ["https://api.myserver.com/", "https://files.myserver.com/"],
+})
+
+// Later at the token step, pick one resource
+const exchanged = await client.exchange(
+  code,
+  redirect_uri,
+  challenge.verifier,
+  { resource: ["https://api.myserver.com/"] },
+)
+```
+
+- Introduce a resource during refresh (when allowed by the original grant):
+
+```ts
+const refreshed = await client.refresh(refreshToken, {
+  resource: ["https://api.myserver.com/"],
+})
+```
+
+Notes:
+
+- The server mints single‑audience access tokens only. If multiple `resource` values are sent to `/token`, the request is rejected with `invalid_target`.
+- Resource values must be absolute URIs without fragments. Prefer network‑addressable locations (for example, `https://api.myserver.com/`).
+
 ---
 
 OpenAuth is created by the maintainers of [SST](https://sst.dev).

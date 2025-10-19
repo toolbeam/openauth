@@ -163,6 +163,20 @@ export interface OnSuccessResponder<
   ): Promise<Response>
 }
 
+export interface AllowCallbackInput {
+  clientID: string
+  redirectURI: string
+  /**
+   * @deprecated Use `resources` instead
+   */
+  audience?: string
+  /**
+   * If provided, the allow hook can use this to restrict which
+   * APIs/resources a client may request during authorization.
+   */
+  resources?: string[]
+}
+
 /**
  * @internal
  */
@@ -172,6 +186,7 @@ export interface AuthorizationState {
   state: string
   client_id: string
   audience?: string
+  resources?: string[]
   pkce?: {
     challenge: string
     method: "S256"
@@ -197,7 +212,12 @@ import { encryptionKeys, legacySigningKeys, signingKeys } from "./keys.js"
 import { validatePKCE } from "./pkce.js"
 import { Select } from "./ui/select.js"
 import { setTheme, Theme } from "./ui/theme.js"
-import { getRelativeUrl, isDomainMatch, lazy } from "./util.js"
+import {
+  getRelativeUrl,
+  isDomainMatch,
+  isValidResourceIndicator,
+  lazy,
+} from "./util.js"
 import { DynamoStorage } from "./storage/dynamo.js"
 import { MemoryStorage } from "./storage/memory.js"
 import { cors } from "hono/cors"
@@ -417,6 +437,7 @@ export interface IssuerInput<
    * - Allow if the `redirectURI` is localhost.
    * - Compare `redirectURI` to the request's hostname or the `x-forwarded-host` header. If they
    *   are from the same sub-domain level, then allow.
+   * - If resource indicators are provided, validate that they are valid and that the host follows the same validation rule as the `redirectURI`.
    *
    * @example
    * ```ts
@@ -428,14 +449,7 @@ export interface IssuerInput<
    * }
    * ```
    */
-  allow?(
-    input: {
-      clientID: string
-      redirectURI: string
-      audience?: string
-    },
-    req: Request,
-  ): Promise<boolean>
+  allow?(input: AllowCallbackInput, req: Request): Promise<boolean>
 }
 
 /**
@@ -474,7 +488,7 @@ export function issuer<
   const allow = lazy(
     () =>
       input.allow ??
-      (async (input: any, req: Request) => {
+      (async (input: AllowCallbackInput, req: Request) => {
         const redir = new URL(input.redirectURI).hostname
         if (redir === "localhost" || redir === "127.0.0.1") {
           return true
@@ -483,6 +497,19 @@ export function issuer<
         const host = forwarded
           ? new URL(`https://${forwarded}`).hostname
           : new URL(req.url).hostname
+
+        if (input.resources) {
+          for (const r of input.resources) {
+            if (!isValidResourceIndicator(r)) {
+              return false
+            }
+
+            const resourceHost = new URL(r).hostname
+            if (!isDomainMatch(resourceHost, host)) {
+              return false
+            }
+          }
+        }
 
         return isDomainMatch(redir, host)
       }),
@@ -525,24 +552,47 @@ export function issuer<
             )
             if (authorization.response_type === "token") {
               const location = new URL(authorization.redirect_uri)
-              const tokens = await generateTokens(ctx, {
-                subject,
-                type: type as string,
-                properties,
-                clientID: authorization.client_id,
-                ttl: {
-                  access: subjectOpts?.ttl?.access ?? ttlAccess,
-                  refresh: subjectOpts?.ttl?.refresh ?? ttlRefresh,
+
+              if (
+                authorization.resources &&
+                authorization.resources.length > 1
+              ) {
+                throw new OauthError(
+                  "invalid_target",
+                  "Multiple resource values are not supported with implicit flow; request a single resource.",
+                )
+              }
+              const accessTTL = subjectOpts?.ttl?.access ?? ttlAccess
+
+              const tokens = await generateTokens(
+                ctx,
+                {
+                  subject,
+                  type: type as string,
+                  properties,
+                  clientID: authorization.client_id,
+                  audience: authorization.resources?.[0],
+                  ttl: {
+                    access: accessTTL,
+                    refresh: subjectOpts?.ttl?.refresh ?? ttlRefresh,
+                  },
                 },
-              })
+                {
+                  // Implicit flow MUST NOT issue refresh tokens (OAuth 2.0 Security BCP)
+                  generateRefreshToken: false,
+                },
+              )
+
               location.hash = new URLSearchParams({
                 access_token: tokens.access,
-                refresh_token: tokens.refresh,
+                token_type: "Bearer",
+                expires_in: accessTTL.toString(),
                 state: authorization.state || "",
               }).toString()
               await auth.unset(ctx, "authorization")
               return ctx.redirect(location.toString(), 302)
             }
+
             if (authorization.response_type === "code") {
               const code = crypto.randomUUID()
               await Storage.set(
@@ -554,6 +604,7 @@ export function issuer<
                   subject,
                   redirectURI: authorization.redirect_uri,
                   clientID: authorization.client_id,
+                  authorizedResources: authorization.resources,
                   pkce: authorization.pkce,
                   ttl: {
                     access: subjectOpts?.ttl?.access ?? ttlAccess,
@@ -653,6 +704,8 @@ export function issuer<
       properties: any
       subject: string
       clientID: string
+      audience?: string
+      authorizedResources?: string[]
       ttl: {
         access: number
         refresh: number
@@ -685,12 +738,13 @@ export function issuer<
       )
     }
     const accessTimeUsed = Math.floor((value.timeUsed ?? Date.now()) / 1000)
+
     return {
       access: await new SignJWT({
         mode: "access",
         type: value.type,
         properties: value.properties,
-        aud: value.clientID,
+        aud: value.audience ?? value.clientID,
         iss: issuer(ctx),
         sub: value.subject,
       })
@@ -815,6 +869,8 @@ export function issuer<
           clientID: string
           redirectURI: string
           subject: string
+          audience?: string
+          authorizedResources?: string[]
           ttl: {
             access: number
             refresh: number
@@ -877,10 +933,83 @@ export function issuer<
             )
           }
         }
-        const tokens = await generateTokens(c, payload)
+
+        const tokenResources = form
+          .getAll("resource")
+          .filter((v): v is string => typeof v === "string" && v.length > 0)
+
+        if (tokenResources.length > 1) {
+          return c.json(
+            {
+              error: "invalid_target",
+              error_description:
+                "Multiple resource values are not supported by this server",
+            },
+            400,
+          )
+        }
+
+        const requestedResource = tokenResources[0]
+
+        if (requestedResource && !isValidResourceIndicator(requestedResource)) {
+          return c.json(
+            {
+              error: "invalid_target",
+              error_description:
+                "The resource value must be an absolute URI with no fragment",
+            },
+            400,
+          )
+        }
+
+        if (
+          requestedResource &&
+          payload.authorizedResources?.length &&
+          !payload.authorizedResources.includes(requestedResource)
+        ) {
+          return c.json(
+            {
+              error: "invalid_target",
+              error_description: "Requested resource is not permitted",
+            },
+            400,
+          )
+        }
+
+        if (
+          !requestedResource &&
+          payload.authorizedResources &&
+          payload.authorizedResources.length > 1
+        ) {
+          return c.json(
+            {
+              error: "invalid_target",
+              error_description:
+                "Resource parameter is required when multiple resources are authorized",
+            },
+            400,
+          )
+        }
+
+        const selectedResource =
+          requestedResource ??
+          (payload.authorizedResources?.length === 1
+            ? payload.authorizedResources[0]
+            : undefined)
+
+        const tokens = await generateTokens(c, {
+          type: payload.type,
+          properties: payload.properties,
+          subject: payload.subject,
+          clientID: payload.clientID,
+          audience: selectedResource,
+          authorizedResources: payload.authorizedResources,
+          ttl: payload.ttl,
+        })
         await Storage.remove(storage, key)
         return c.json({
           access_token: tokens.access,
+          token_type: "Bearer",
           expires_in: tokens.expiresIn,
           refresh_token: tokens.refresh,
         })
@@ -905,6 +1034,8 @@ export function issuer<
           properties: any
           clientID: string
           subject: string
+          audience?: string
+          authorizedResources?: string[]
           ttl: {
             access: number
             refresh: number
@@ -921,12 +1052,104 @@ export function issuer<
             400,
           )
         }
+        const tokenResources = form
+          .getAll("resource")
+          .filter((v): v is string => typeof v === "string" && v.length > 0)
+
+        if (tokenResources.length > 1) {
+          return c.json(
+            {
+              error: "invalid_target",
+              error_description:
+                "Multiple resource values are not supported by this server",
+            },
+            400,
+          )
+        }
+
+        const requestedResource = tokenResources[0]
+
+        if (requestedResource && !isValidResourceIndicator(requestedResource)) {
+          return c.json(
+            {
+              error: "invalid_target",
+              error_description:
+                "The resource value must be an absolute URI with no fragment",
+            },
+            400,
+          )
+        }
+
+        if (
+          requestedResource &&
+          payload.authorizedResources?.length &&
+          !payload.authorizedResources.includes(requestedResource)
+        ) {
+          return c.json(
+            {
+              error: "invalid_target",
+              error_description: "Requested resource is not permitted",
+            },
+            400,
+          )
+        }
+
+        if (
+          !requestedResource &&
+          payload.authorizedResources &&
+          payload.authorizedResources.length > 1
+        ) {
+          return c.json(
+            {
+              error: "invalid_target",
+              error_description:
+                "Resource parameter is required when multiple resources are authorized",
+            },
+            400,
+          )
+        }
+
+        const now = Date.now()
+        const withinReuse =
+          typeof payload.timeUsed === "number" &&
+          now <= payload.timeUsed + ttlRefreshReuse * 1000
+
+        if (
+          withinReuse &&
+          requestedResource &&
+          payload.audience &&
+          requestedResource !== payload.audience
+        ) {
+          return c.json(
+            {
+              error: "invalid_target",
+              error_description:
+                "Requested resource is not permitted for this refresh token during reuse window",
+            },
+            400,
+          )
+        }
+
+        // Select resource: requested, or single authorized, or previous (if in reuse window), or none
+        let selectedResource =
+          requestedResource ??
+          (payload.authorizedResources?.length === 1
+            ? payload.authorizedResources[0]
+            : undefined)
+
+        if (!selectedResource && withinReuse && payload.audience) {
+          selectedResource = payload.audience
+        }
+
+        // Persist reuse-window metadata; lock the selected resource for this window.
         const generateRefreshToken = !payload.timeUsed
         if (ttlRefreshReuse <= 0) {
           // no reuse interval, remove the refresh token immediately
           await Storage.remove(storage, key)
         } else if (!payload.timeUsed) {
-          payload.timeUsed = Date.now()
+          if (selectedResource) payload.audience = selectedResource
+          else delete payload.audience
+          payload.timeUsed = now
           await Storage.set(
             storage,
             key,
@@ -944,13 +1167,29 @@ export function issuer<
             400,
           )
         }
-        const tokens = await generateTokens(c, payload, {
-          generateRefreshToken,
-        })
+
+        const tokens = await generateTokens(
+          c,
+          {
+            type: payload.type,
+            properties: payload.properties,
+            subject: payload.subject,
+            clientID: payload.clientID,
+            audience: selectedResource,
+            authorizedResources: payload.authorizedResources,
+            ttl: payload.ttl,
+            timeUsed: payload.timeUsed,
+            nextToken: payload.nextToken,
+          },
+          {
+            generateRefreshToken,
+          },
+        )
         return c.json({
           access_token: tokens.access,
-          refresh_token: tokens.refresh,
+          token_type: "Bearer",
           expires_in: tokens.expiresIn,
+          refresh_token: tokens.refresh,
         })
       }
 
@@ -972,6 +1211,32 @@ export function issuer<
           return c.json({ error: "missing `client_id` form value" }, 400)
         if (!clientSecret)
           return c.json({ error: "missing `client_secret` form value" }, 400)
+        // Validate resource indicators for client_credentials
+        const resourceValues = form
+          .getAll("resource")
+          .filter((v): v is string => typeof v === "string" && v.length > 0)
+        if (resourceValues.length > 1) {
+          return c.json(
+            {
+              error: "invalid_target",
+              error_description:
+                "Multiple resource values are not supported by this server",
+            },
+            400,
+          )
+        }
+        const resourceValue = resourceValues[0]
+        if (resourceValue && !isValidResourceIndicator(resourceValue)) {
+          return c.json(
+            {
+              error: "invalid_target",
+              error_description:
+                "The resource value must be an absolute URI with no fragment",
+            },
+            400,
+          )
+        }
+
         const response = await match.client({
           clientID: clientID.toString(),
           clientSecret: clientSecret.toString(),
@@ -986,6 +1251,10 @@ export function issuer<
                   opts?.subject || (await resolveSubject(type, properties)),
                 properties,
                 clientID: clientID.toString(),
+                audience: resourceValue?.toString(),
+                authorizedResources: resourceValue
+                  ? [resourceValue.toString()]
+                  : undefined,
                 ttl: {
                   access: opts?.ttl?.access ?? ttlAccess,
                   refresh: opts?.ttl?.refresh ?? ttlRefresh,
@@ -993,6 +1262,8 @@ export function issuer<
               })
               return c.json({
                 access_token: tokens.access,
+                token_type: "Bearer",
+                expires_in: tokens.expiresIn,
                 refresh_token: tokens.refresh,
               })
             },
@@ -1015,7 +1286,22 @@ export function issuer<
     const redirect_uri = c.req.query("redirect_uri")
     const state = c.req.query("state")
     const client_id = c.req.query("client_id")
-    const audience = c.req.query("audience")
+    // RFC 8707: allow multiple resource parameters at authorization endpoint
+    const url = new URL(c.req.url)
+    const resources = url.searchParams.getAll("resource")
+    // Validate resource indicators early (RFC 8707)
+    for (const r of resources) {
+      if (!isValidResourceIndicator(r)) {
+        return c.json(
+          {
+            error: "invalid_target",
+            error_description:
+              "The resource value must be an absolute URI with no fragment",
+          },
+          400,
+        )
+      }
+    }
     const code_challenge = c.req.query("code_challenge")
     const code_challenge_method = c.req.query("code_challenge_method")
     const authorization: AuthorizationState = {
@@ -1023,7 +1309,7 @@ export function issuer<
       redirect_uri,
       state,
       client_id,
-      audience,
+      resources: resources.length ? resources : undefined,
       pkce:
         code_challenge && code_challenge_method
           ? {
@@ -1050,17 +1336,11 @@ export function issuer<
       await input.start(c.req.raw)
     }
 
-    if (
-      !(await allow()(
-        {
-          clientID: client_id,
-          redirectURI: redirect_uri,
-          audience,
-        },
-        c.req.raw,
-      ))
+    const ok = await allow()(
+      { clientID: client_id, redirectURI: redirect_uri, resources },
+      c.req.raw,
     )
-      throw new UnauthorizedClientError(client_id, redirect_uri)
+    if (!ok) throw new UnauthorizedClientError(client_id, redirect_uri)
     await auth.set(c, "authorization", 60 * 60 * 24, authorization)
     if (provider) return c.redirect(`/${provider}/authorize`)
     const providers = Object.keys(input.providers)
@@ -1147,8 +1427,21 @@ export function issuer<
       err instanceof OauthError
         ? err
         : new OauthError("server_error", err.message)
-    url.searchParams.set("error", oauth.error)
-    url.searchParams.set("error_description", oauth.description)
+
+    if (authorization.response_type === "token") {
+      url.hash = new URLSearchParams({
+        error: oauth.error,
+        error_description: oauth.description,
+        state: authorization.state || "",
+      }).toString()
+    } else {
+      url.searchParams.set("error", oauth.error)
+      url.searchParams.set("error_description", oauth.description)
+      if (authorization.state) {
+        url.searchParams.set("state", authorization.state)
+      }
+    }
+
     return c.redirect(url.toString())
   })
 

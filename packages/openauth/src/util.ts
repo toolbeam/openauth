@@ -56,3 +56,15 @@ export function lazy<T>(fn: () => T): () => T {
     return value
   }
 }
+
+/**
+ * RFC 8707 resource indicator validator: absolute URI with no fragment
+ */
+export function isValidResourceIndicator(v: string): boolean {
+  try {
+    const u = new URL(v)
+    return u.hash === ""
+  } catch {
+    return false
+  }
+}
