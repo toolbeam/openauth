@@ -71,6 +71,45 @@ afterEach(() => {
   setSystemTime()
 })
 
+describe("implicit flow", () => {
+  test("success without refresh token", async () => {
+    const url = new URL("https://auth.example.com/authorize")
+    url.searchParams.set("client_id", "123")
+    url.searchParams.set("redirect_uri", "https://client.example.com/callback")
+    url.searchParams.set("response_type", "token")
+    url.searchParams.set("provider", "dummy")
+
+    let response = await auth.request(url.toString())
+    expect(response.status).toBe(302)
+
+    response = await auth.request(response.headers.get("location")!, {
+      headers: {
+        cookie: response.headers.get("set-cookie")!,
+      },
+    })
+
+    expect(response.status).toBe(302)
+    const location = new URL(response.headers.get("location")!)
+    expect(location.origin + location.pathname).toBe(
+      "https://client.example.com/callback",
+    )
+
+    const fragmentParams = new URLSearchParams(location.hash.substring(1))
+
+    expect(fragmentParams.has("access_token")).toBe(true)
+    expect(fragmentParams.get("access_token")).toMatch(/.+/)
+
+    expect(fragmentParams.get("token_type")).toBe("Bearer")
+
+    expect(fragmentParams.has("expires_in")).toBe(true)
+    expect(parseInt(fragmentParams.get("expires_in")!)).toBeGreaterThan(0)
+
+    expect(fragmentParams.has("refresh_token")).toBe(false)
+
+    expect(fragmentParams.has("state")).toBe(true)
+  })
+})
+
 describe("code flow", () => {
   test("success", async () => {
     const client = createClient({
