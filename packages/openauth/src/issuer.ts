@@ -525,19 +525,26 @@ export function issuer<
             )
             if (authorization.response_type === "token") {
               const location = new URL(authorization.redirect_uri)
-              const tokens = await generateTokens(ctx, {
-                subject,
-                type: type as string,
-                properties,
-                clientID: authorization.client_id,
-                ttl: {
-                  access: subjectOpts?.ttl?.access ?? ttlAccess,
-                  refresh: subjectOpts?.ttl?.refresh ?? ttlRefresh,
+              const tokens = await generateTokens(
+                ctx,
+                {
+                  subject,
+                  type: type as string,
+                  properties,
+                  clientID: authorization.client_id,
+                  ttl: {
+                    access: subjectOpts?.ttl?.access ?? ttlAccess,
+                    refresh: subjectOpts?.ttl?.refresh ?? ttlRefresh,
+                  },
                 },
-              })
+                {
+                  generateRefreshToken: false,
+                },
+              )
               location.hash = new URLSearchParams({
                 access_token: tokens.access,
-                refresh_token: tokens.refresh,
+                token_type: "Bearer",
+                expires_in: tokens.expiresIn.toString(),
                 state: authorization.state || "",
               }).toString()
               await auth.unset(ctx, "authorization")
