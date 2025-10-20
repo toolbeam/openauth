@@ -178,6 +178,19 @@ export interface AuthorizeOptions {
    * If there's only one provider configured, the user will be redirected to that.
    */
   provider?: string
+  /**
+   * Which resource(s) to request access to at authorization.
+   *
+   * ```ts
+   * {
+   *   resource: ["https://api.myapp.com/", "https://files.myapp.com/"]
+   * }
+   * ```
+   *
+   * If multiple are provided, the server
+   * will record them but will require selecting one when exchanging the token.
+   */
+  resources?: string[]
 }
 
 export interface AuthorizeResult {
@@ -201,6 +214,14 @@ export interface AuthorizeResult {
    * ```
    */
   url: string
+}
+
+// exchange options
+export interface ExchangeOptions {
+  /**
+   * The resource to request access to.
+   */
+  resource?: string
 }
 
 /**
@@ -239,6 +260,11 @@ export interface RefreshOptions {
    * Optionally, pass in the access token.
    */
   access?: string
+  /**
+   * Optionally specify a resource when refreshing.
+   * The server may restrict this to the set originally authorized.
+   */
+  resource?: string
 }
 
 /**
@@ -436,6 +462,7 @@ export interface Client {
     code: string,
     redirectURI: string,
     verifier?: string,
+    opts?: ExchangeOptions,
   ): Promise<ExchangeSuccess | ExchangeError>
   /**
    * Refreshes the tokens if they have expired. This is used in an SPA app to maintain the
@@ -588,6 +615,15 @@ export function createClient(input: ClientInput): Client {
       result.searchParams.set("response_type", response)
       result.searchParams.set("state", challenge.state)
       if (opts?.provider) result.searchParams.set("provider", opts.provider)
+
+      if (opts?.resources) {
+        const resources = Array.isArray(opts.resources)
+          ? opts.resources
+          : [opts.resources]
+
+        for (const r of resources) result.searchParams.append("resource", r)
+      }
+
       if (opts?.pkce && response === "code") {
         const pkce = await generatePKCE()
         result.searchParams.set("code_challenge_method", "S256")
@@ -622,19 +658,26 @@ export function createClient(input: ClientInput): Client {
       code: string,
       redirectURI: string,
       verifier?: string,
+      opts?: ExchangeOptions,
     ): Promise<ExchangeSuccess | ExchangeError> {
+      const params = new URLSearchParams({
+        code,
+        redirect_uri: redirectURI,
+        grant_type: "authorization_code",
+        client_id: input.clientID,
+        code_verifier: verifier || "",
+      })
+
+      if (opts?.resource) {
+        params.set("resource", opts.resource)
+      }
+
       const tokens = await f(issuer + "/token", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: new URLSearchParams({
-          code,
-          redirect_uri: redirectURI,
-          grant_type: "authorization_code",
-          client_id: input.clientID,
-          code_verifier: verifier || "",
-        }).toString(),
+        body: params.toString(),
       })
       const json = (await tokens.json()) as any
       if (!tokens.ok) {
@@ -669,15 +712,19 @@ export function createClient(input: ClientInput): Client {
           }
         }
       }
+      const params = new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refresh,
+      })
+
+      if (opts?.resource) params.set("resource", opts.resource)
+
       const tokens = await f(issuer + "/token", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: new URLSearchParams({
-          grant_type: "refresh_token",
-          refresh_token: refresh,
-        }).toString(),
+        body: params.toString(),
       })
       const json = (await tokens.json()) as any
       if (!tokens.ok) {
@@ -717,7 +764,7 @@ export function createClient(input: ClientInput): Client {
             subject: {
               type: result.payload.type,
               properties: validated.value,
-            } as any,
+            } as VerifyResult<T>["subject"],
           }
         return {
           err: new InvalidSubjectError(),

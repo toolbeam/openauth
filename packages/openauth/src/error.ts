@@ -22,6 +22,7 @@ export class OauthError extends Error {
     public error:
       | "invalid_request"
       | "invalid_grant"
+      | "invalid_target"
       | "unauthorized_client"
       | "access_denied"
       | "unsupported_grant_type"

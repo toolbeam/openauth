@@ -1,6 +1,10 @@
 import { expect, test } from "bun:test"
 import { Context } from "hono"
-import { getRelativeUrl, isDomainMatch } from "../src/util.js"
+import {
+  getRelativeUrl,
+  isDomainMatch,
+  isValidResourceIndicator,
+} from "../src/util.js"
 
 test("isDomainMatch", () => {
   // Basic matches
@@ -100,4 +104,15 @@ test("getRelativeUrl", () => {
   expect(getRelativeUrl(ctx4, "http://other.com/path")).toBe(
     "http://other.com/path",
   )
+})
+
+test("isValidResourceIndicator - accepts absolute URIs without fragments", () => {
+  expect(isValidResourceIndicator("https://api.example.com")).toBe(true)
+  expect(isValidResourceIndicator("urn:example:resource")).toBe(true)
+})
+
+test("isValidResourceIndicator - rejects relative and with fragment", () => {
+  expect(isValidResourceIndicator("/relative")).toBe(false)
+  expect(isValidResourceIndicator("https://api.example.com/#frag")).toBe(false)
+  expect(isValidResourceIndicator("")).toBe(false)
 })
