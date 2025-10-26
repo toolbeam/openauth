@@ -119,6 +119,95 @@ describe("code flow", () => {
   })
 })
 
+describe("error handling (same-request)", () => {
+  test("select() throws after authorization is set -> must redirect with OAuth error", async () => {
+    // Two entries pointing to the same dummy provider to trigger the select() UI
+    const multiProviderIssuer = issuer({
+      ...issuerConfig,
+      providers: {
+        a: issuerConfig.providers.dummy,
+        b: issuerConfig.providers.dummy,
+      },
+      // Force an error after state is set but before the response is returned
+      select: async () => {
+        throw new Error("boom")
+      },
+    })
+
+    const client = createClient({
+      issuer: "https://auth.example.com",
+      clientID: "web",
+      fetch: (a, b) => Promise.resolve(multiProviderIssuer.request(a, b)),
+    })
+
+    const { url } = await client.authorize(
+      "https://client.example.com/callback",
+      "code",
+    )
+
+    const res = await multiProviderIssuer.request(url)
+
+    // Desired behavior: redirect to redirect_uri with server_error
+    expect(res.status).toBe(302)
+    const location = new URL(res.headers.get("location")!)
+    expect(location.origin + location.pathname).toBe(
+      "https://client.example.com/callback",
+    )
+    expect(location.searchParams.get("error")).toBe("server_error")
+  })
+})
+
+describe("authorization precedence", () => {
+  test("cookie wins over request-local when both are present", async () => {
+    // 1) Create a stale authorization cookie pointing to old.example.com
+    const staleIssuer = issuer(issuerConfig)
+    const staleClient = createClient({
+      issuer: "https://auth.example.com",
+      clientID: "web",
+      fetch: (a, b) => Promise.resolve(staleIssuer.request(a, b)),
+    })
+    const { url: staleUrl } = await staleClient.authorize(
+      "https://old.example.com/callback",
+      "code",
+    )
+    const staleRes = await staleIssuer.request(staleUrl)
+    expect(staleRes.status).toBe(302)
+    const staleCookie = staleRes.headers.get("set-cookie")!
+
+    // 2) In a new request, also create a fresh request-local authorization but throw before responding
+    //    to trigger app.onError within the same request. Include the stale cookie in the request.
+    const throwingIssuer = issuer({
+      ...issuerConfig,
+      providers: {
+        a: issuerConfig.providers.dummy,
+        b: issuerConfig.providers.dummy,
+      },
+      select: async () => {
+        throw new Error("boom")
+      },
+    })
+    const freshClient = createClient({
+      issuer: "https://auth.example.com",
+      clientID: "web",
+      fetch: (a, b) => Promise.resolve(throwingIssuer.request(a, b)),
+    })
+    const { url: freshUrl } = await freshClient.authorize(
+      "https://new.example.com/callback",
+      "code",
+    )
+    const res = await throwingIssuer.request(freshUrl, {
+      headers: { cookie: staleCookie },
+    })
+
+    // If cookie has precedence, we should be redirected to the OLD callback
+    expect(res.status).toBe(302)
+    const location = new URL(res.headers.get("location")!)
+    expect(location.origin + location.pathname).toBe(
+      "https://old.example.com/callback",
+    )
+  })
+})
+
 describe("client credentials flow", () => {
   test("success", async () => {
     const client = createClient({

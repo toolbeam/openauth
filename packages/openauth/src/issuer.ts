@@ -163,6 +163,12 @@ export interface OnSuccessResponder<
   ): Promise<Response>
 }
 
+export interface AllowCallbackInput {
+  clientID: string
+  redirectURI: string
+  audience?: string
+}
+
 /**
  * @internal
  */
@@ -416,26 +422,31 @@ export interface IssuerInput<
    *
    * - Allow if the `redirectURI` is localhost.
    * - Compare `redirectURI` to the request's hostname or the `x-forwarded-host` header. If they
-   *   are from the same sub-domain level, then allow.
+   *   share the same apex domain, then allow.
+   *
+   * :::caution[Security Notice]
+   * The default implementation allows ANY `redirect_uri` on the same apex domain with no per-client isolation.
+   * Consider implementing a custom `allow` function with strict per-client validation if your deployment has:
+   * - Untrusted content on subdomains (user-generated content, third-party scripts)
+   * - Potential XSS attack vectors
+   * - Multiple client applications requiring isolation
+   * :::
    *
    * @example
+   * Recommended for production (per-client allowlist):
    * ```ts
    * {
    *   allow: async (input, req) => {
-   *     // Allow all clients
-   *     return true
+   *     const allowedRedirects = {
+   *       'web-client': ['https://app.example.com/callback'],
+   *       'mobile-client': ['https://admin.example.com/oauth'],
+   *     }
+   *     return allowedRedirects[input.clientID]?.includes(input.redirectURI) ?? false
    *   }
    * }
    * ```
    */
-  allow?(
-    input: {
-      clientID: string
-      redirectURI: string
-      audience?: string
-    },
-    req: Request,
-  ): Promise<boolean>
+  allow?(input: AllowCallbackInput, req: Request): Promise<boolean>
 }
 
 /**
@@ -474,7 +485,7 @@ export function issuer<
   const allow = lazy(
     () =>
       input.allow ??
-      (async (input: any, req: Request) => {
+      (async (input: AllowCallbackInput, req: Request) => {
         const redir = new URL(input.redirectURI).hostname
         if (redir === "localhost" || redir === "127.0.0.1") {
           return true
@@ -1032,7 +1043,6 @@ export function issuer<
             }
           : undefined,
     } as AuthorizationState
-    c.set("authorization", authorization)
 
     if (!redirect_uri) {
       return c.text("Missing redirect_uri", { status: 400 })
@@ -1062,6 +1072,7 @@ export function issuer<
     )
       throw new UnauthorizedClientError(client_id, redirect_uri)
     await auth.set(c, "authorization", 60 * 60 * 24, authorization)
+    c.set("authorization", authorization)
     if (provider) return c.redirect(`/${provider}/authorize`)
     const providers = Object.keys(input.providers)
     if (providers.length === 1) return c.redirect(`/${providers[0]}/authorize`)
@@ -1138,6 +1149,21 @@ export function issuer<
 
   app.onError(async (err, c) => {
     console.error(err)
+
+    if (err instanceof UnauthorizedClientError) {
+      return c.json(
+        { error: err.error, error_description: err.description },
+        400,
+      )
+    }
+
+    if (err instanceof MissingParameterError) {
+      return c.json(
+        { error: err.error, error_description: err.description },
+        400,
+      )
+    }
+
     if (err instanceof UnknownStateError) {
       return auth.forward(c, await error(err, c.req.raw))
     }
