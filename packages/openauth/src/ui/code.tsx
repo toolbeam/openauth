@@ -24,7 +24,7 @@
  */
 /** @jsxImportSource hono/jsx */
 
-import { CodeProviderOptions } from "../provider/code.js"
+import { CodeProviderOptions, CodeProviderError } from "../provider/code.js"
 import { UnknownStateError } from "../error.js"
 import { Layout } from "./base.js"
 import { FormAlert } from "./form.js"
@@ -91,7 +91,7 @@ export interface CodeUIOptions {
    * }
    * ```
    */
-  sendCode: (claims: Record<string, string>, code: string) => Promise<void>
+  sendCode: (claims: Record<string, string>, code: string) => Promise<void | CodeProviderError>
   /**
    * Custom copy for the UI.
    */
