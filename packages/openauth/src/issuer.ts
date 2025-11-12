@@ -1114,26 +1114,48 @@ export function issuer<
       )
     }
 
-    const result = await jwtVerify<{
-      mode: "access"
-      type: keyof SubjectSchema
-      properties: v1.InferInput<SubjectSchema[keyof SubjectSchema]>
-    }>(token, () => signingKey().then((item) => item.public), {
-      issuer: issuer(c),
-    })
+    try {
+      const result = await jwtVerify<{
+        mode: "access"
+        type: keyof SubjectSchema
+        properties: v1.InferInput<SubjectSchema[keyof SubjectSchema]>
+        aud?: string
+      }>(token, () => signingKey().then((item) => item.public), {
+        issuer: issuer(c),
+      })
 
-    const validated = await input.subjects[result.payload.type][
-      "~standard"
-    ].validate(result.payload.properties)
+      // Validate that the token has an audience claim
+      if (!result.payload.aud) {
+        return c.json(
+          {
+            error: "invalid_token",
+            error_description: "Token missing audience claim",
+          },
+          401,
+        )
+      }
 
-    if (!validated.issues && result.payload.mode === "access") {
-      return c.json(validated.value as SubjectSchema)
+      const validated = await input.subjects[result.payload.type][
+        "~standard"
+      ].validate(result.payload.properties)
+
+      if (!validated.issues && result.payload.mode === "access") {
+        return c.json(validated.value as SubjectSchema)
+      }
+
+      return c.json({
+        error: "invalid_token",
+        error_description: "Invalid token",
+      })
+    } catch (e) {
+      return c.json(
+        {
+          error: "invalid_token",
+          error_description: "Token verification failed",
+        },
+        401,
+      )
     }
-
-    return c.json({
-      error: "invalid_token",
-      error_description: "Invalid token",
-    })
   })
 
   app.onError(async (err, c) => {
