@@ -189,7 +189,7 @@ export function CodeUI(props: CodeUIOptions): CodeProviderOptions {
                   className="hidden"
                 />
               ))}
-              <input type="hidden" name="action" value="request" />
+              <input type="hidden" name="action" value="resend" />
               <div data-component="form-footer">
                 <span>
                   {copy.code_didnt_get}{" "}
