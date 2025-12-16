@@ -22,18 +22,35 @@ import type { KVNamespace } from "@cloudflare/workers-types"
 import { joinKey, splitKey, StorageAdapter } from "./storage.js"
 
 /**
+ * Minimal KV surface used by this adapter. Kept intentionally loose so it
+ * works with both `@cloudflare/workers-types` and `wrangler types` output.
+ */
+export type CloudflareKVNamespaceLike = {
+  get: (key: string, type?: any) => Promise<any>
+  put: (key: string, value: any, options?: any) => Promise<any>
+  delete: (key: string) => Promise<any>
+  list: (options?: any) => Promise<{
+    keys: { name: string }[]
+    list_complete: boolean
+    cursor?: string
+  }>
+}
+
+/**
  * Configure the Cloudflare KV store that's created.
  */
-export interface CloudflareStorageOptions {
-  namespace: KVNamespace
+export interface CloudflareStorageOptions<
+  Namespace extends CloudflareKVNamespaceLike = KVNamespace,
+> {
+  namespace: Namespace
 }
 /**
  * Creates a Cloudflare KV store.
  * @param options - The config for the adapter.
  */
-export function CloudflareStorage(
-  options: CloudflareStorageOptions,
-): StorageAdapter {
+export function CloudflareStorage<
+  Namespace extends CloudflareKVNamespaceLike = KVNamespace,
+>(options: CloudflareStorageOptions<Namespace>): StorageAdapter {
   return {
     async get(key: string[]) {
       const value = await options.namespace.get(joinKey(key), "json")
