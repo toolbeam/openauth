@@ -881,6 +881,7 @@ export function issuer<
         await Storage.remove(storage, key)
         return c.json({
           access_token: tokens.access,
+          token_type: "Bearer",
           expires_in: tokens.expiresIn,
           refresh_token: tokens.refresh,
         })
@@ -949,6 +950,7 @@ export function issuer<
         })
         return c.json({
           access_token: tokens.access,
+          token_type: "Bearer",
           refresh_token: tokens.refresh,
           expires_in: tokens.expiresIn,
         })
