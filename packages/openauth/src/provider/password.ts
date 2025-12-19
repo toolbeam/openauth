@@ -42,6 +42,11 @@ import { Storage } from "../storage/storage.js"
 import { Provider } from "./provider.js"
 import { generateUnbiasedDigits, timingSafeCompare } from "../random.js"
 import { v1 } from "@standard-schema/spec"
+import {
+  getTurnstileToken,
+  TurnstileOptions,
+  verifyTurnstileToken,
+} from "../turnstile.js"
 
 /**
  * @internal
@@ -141,6 +146,13 @@ export interface PasswordConfig {
   validatePassword?:
     | v1.StandardSchema
     | ((password: string) => Promise<string | undefined> | string | undefined)
+  /**
+   * Optionally enable Cloudflare Turnstile for sensitive actions.
+   *
+   * When enabled, the provider verifies the Turnstile token server-side and rejects requests
+   * with missing or invalid tokens.
+   */
+  turnstile?: TurnstileOptions
 }
 
 /**
@@ -176,6 +188,9 @@ export type PasswordRegisterState =
 export type PasswordRegisterError =
   | {
       type: "invalid_code"
+    }
+  | {
+      type: "turnstile"
     }
   | {
       type: "email_taken"
@@ -235,6 +250,9 @@ export type PasswordChangeError =
       type: "invalid_email"
     }
   | {
+      type: "turnstile"
+    }
+  | {
       type: "invalid_code"
     }
   | {
@@ -263,6 +281,9 @@ export type PasswordLoginError =
   | {
       type: "invalid_email"
     }
+  | {
+      type: "turnstile"
+    }
 
 export function PasswordProvider(
   config: PasswordConfig,
@@ -274,6 +295,20 @@ export function PasswordProvider(
   return {
     type: "password",
     init(routes, ctx) {
+      async function verifyTurnstile(req: Request, fd: FormData) {
+        if (!config.turnstile) return true
+        const token = getTurnstileToken(fd, config.turnstile.fieldName)
+        if (!token) return false
+        const result = await verifyTurnstileToken({
+          secretKey: config.turnstile.secretKey,
+          token,
+          req,
+          action: config.turnstile.action,
+          hostnames: config.turnstile.hostnames,
+        })
+        return result.success
+      }
+
       routes.get("/authorize", async (c) =>
         ctx.forward(c, await config.login(c.req.raw)),
       )
@@ -283,6 +318,8 @@ export function PasswordProvider(
         async function error(err: PasswordLoginError) {
           return ctx.forward(c, await config.login(c.req.raw, fd, err))
         }
+        if (!(await verifyTurnstile(c.req.raw, fd)))
+          return error({ type: "turnstile" })
         const email = fd.get("email")?.toString()?.toLowerCase()
         if (!email) return error({ type: "invalid_email" })
         const hash = await Storage.get<HashedPassword>(ctx.storage, [
@@ -338,6 +375,8 @@ export function PasswordProvider(
         }
 
         if (action === "register" && provider.type === "start") {
+          if (!(await verifyTurnstile(c.req.raw, fd)))
+            return transition(provider, { type: "turnstile" })
           const password = fd.get("password")?.toString()
           const repeat = fd.get("repeat")?.toString()
           if (!email) return transition(provider, { type: "invalid_email" })
@@ -387,6 +426,8 @@ export function PasswordProvider(
         }
 
         if (action === "register" && provider.type === "code") {
+          if (!(await verifyTurnstile(c.req.raw, fd)))
+            return transition(provider, { type: "turnstile" })
           const code = generate()
           await config.sendCode(provider.email, code)
           return transition({
@@ -447,6 +488,8 @@ export function PasswordProvider(
         }
 
         if (action === "code") {
+          if (!(await verifyTurnstile(c.req.raw, fd)))
+            return transition(provider, { type: "turnstile" })
           const email = fd.get("email")?.toString()?.toLowerCase()
           if (!email)
             return transition(

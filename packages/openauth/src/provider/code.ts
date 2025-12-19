@@ -55,6 +55,11 @@
 import { Context } from "hono"
 import { Provider } from "./provider.js"
 import { generateUnbiasedDigits, timingSafeCompare } from "../random.js"
+import {
+  getTurnstileToken,
+  TurnstileOptions,
+  verifyTurnstileToken,
+} from "../turnstile.js"
 
 export interface CodeProviderConfig<
   Claims extends Record<string, string> = Record<string, string>,
@@ -96,6 +101,13 @@ export interface CodeProviderConfig<
    * ```
    */
   sendCode: (claims: Claims, code: string) => Promise<void | CodeProviderError>
+  /**
+   * Optionally enable Cloudflare Turnstile for the code request/resend actions.
+   *
+   * When enabled, the provider verifies the Turnstile token server-side and rejects requests
+   * with missing or invalid tokens.
+   */
+  turnstile?: TurnstileOptions
 }
 
 /**
@@ -130,6 +142,9 @@ export type CodeProviderError =
       type: "invalid_code"
     }
   | {
+      type: "turnstile"
+    }
+  | {
       type: "invalid_claim"
       key: string
       value: string
@@ -146,6 +161,20 @@ export function CodeProvider<
   return {
     type: "code",
     init(routes, ctx) {
+      async function verifyTurnstile(req: Request, fd: FormData) {
+        if (!config.turnstile) return true
+        const token = getTurnstileToken(fd, config.turnstile.fieldName)
+        if (!token) return false
+        const result = await verifyTurnstileToken({
+          secretKey: config.turnstile.secretKey,
+          token,
+          req,
+          action: config.turnstile.action,
+          hostnames: config.turnstile.hostnames,
+        })
+        return result.success
+      }
+
       async function transition(
         c: Context,
         next: CodeProviderState,
@@ -173,6 +202,8 @@ export function CodeProvider<
         const action = fd.get("action")?.toString()
 
         if (action === "request" || action === "resend") {
+          if (!(await verifyTurnstile(c.req.raw, fd)))
+            return transition(c, { type: "start" }, fd, { type: "turnstile" })
           const claims = Object.fromEntries(fd) as Claims
           delete claims.action
           const err = await config.sendCode(claims, code)

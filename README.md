@@ -127,6 +127,27 @@ const app = issuer({
 })
 ```
 
+#### Turnstile (optional)
+
+You can optionally require Cloudflare Turnstile for the built-in `password` and `code` providers.
+
+```ts
+import { PasswordProvider } from "@openauthjs/openauth/provider/password"
+import { PasswordUI } from "@openauthjs/openauth/ui/password"
+
+password: PasswordProvider(
+  PasswordUI({
+    sendCode: async (email, code) => {
+      console.log(email, code)
+    },
+    turnstile: {
+      siteKey: process.env.TURNSTILE_SITE_KEY!,
+      secretKey: process.env.TURNSTILE_SECRET_KEY!,
+    },
+  }),
+),
+```
+
 Next up is the `subjects` field. Subjects are what the access token generated at the end of the auth flow will map to. Under the hood, the access token is a JWT that contains this data. You will likely just have a single subject to start but you can define additional ones for different types of users.
 
 ```ts

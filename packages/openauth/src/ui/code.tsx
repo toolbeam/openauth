@@ -28,6 +28,8 @@ import { CodeProviderOptions } from "../provider/code.js"
 import { UnknownStateError } from "../error.js"
 import { Layout } from "./base.js"
 import { FormAlert } from "./form.js"
+import { TurnstileOptions } from "../turnstile.js"
+import { TurnstileScript, TurnstileWidget } from "./turnstile.js"
 
 const DEFAULT_COPY = {
   /**
@@ -70,6 +72,10 @@ const DEFAULT_COPY = {
    * Copy for the resend button.
    */
   code_resend: "Resend",
+  /**
+   * Error message when Turnstile is missing or invalid.
+   */
+  turnstile_invalid: "Please complete the challenge.",
 }
 
 export type CodeUICopy = typeof DEFAULT_COPY
@@ -101,6 +107,10 @@ export interface CodeUIOptions {
    * @default "email"
    */
   mode?: "email" | "phone"
+  /**
+   * Optionally enable Cloudflare Turnstile for the code request/resend actions.
+   */
+  turnstile?: TurnstileOptions
 }
 
 /**
@@ -114,17 +124,23 @@ export function CodeUI(props: CodeUIOptions): CodeProviderOptions {
   }
 
   const mode = props.mode ?? "email"
+  const turnstile = props.turnstile?.siteKey ? props.turnstile : undefined
 
   return {
     sendCode: props.sendCode,
     length: 6,
+    turnstile: props.turnstile,
     request: async (_req, state, _form, error): Promise<Response> => {
       if (state.type === "start") {
         const jsx = (
           <Layout>
+            {turnstile && <TurnstileScript />}
             <form data-component="form" method="post">
               {error?.type === "invalid_claim" && (
                 <FormAlert message={copy.email_invalid} />
+              )}
+              {error?.type === "turnstile" && (
+                <FormAlert message={copy.turnstile_invalid} />
               )}
               <input type="hidden" name="action" value="request" />
               <input
@@ -136,6 +152,13 @@ export function CodeUI(props: CodeUIOptions): CodeProviderOptions {
                 required
                 placeholder={copy.email_placeholder}
               />
+              {turnstile && (
+                <TurnstileWidget
+                  siteKey={turnstile.siteKey!}
+                  action={turnstile.action}
+                  widget={turnstile.widget}
+                />
+              )}
               <button data-component="button">{copy.button_continue}</button>
             </form>
             <p data-component="form-footer">{copy.code_info}</p>
@@ -151,6 +174,7 @@ export function CodeUI(props: CodeUIOptions): CodeProviderOptions {
       if (state.type === "code") {
         const jsx = (
           <Layout>
+            {turnstile && <TurnstileScript />}
             <form data-component="form" class="form" method="post">
               {error?.type === "invalid_code" && (
                 <FormAlert message={copy.code_invalid} />
@@ -190,6 +214,13 @@ export function CodeUI(props: CodeUIOptions): CodeProviderOptions {
                 />
               ))}
               <input type="hidden" name="action" value="request" />
+              {turnstile && (
+                <TurnstileWidget
+                  siteKey={turnstile.siteKey!}
+                  action={turnstile.action}
+                  widget={turnstile.widget}
+                />
+              )}
               <div data-component="form-footer">
                 <span>
                   {copy.code_didnt_get}{" "}

@@ -33,6 +33,7 @@ import {
 import { Layout } from "./base.js"
 import "./form.js"
 import { FormAlert } from "./form.js"
+import { TurnstileScript, TurnstileWidget } from "./turnstile.js"
 
 const DEFAULT_COPY = {
   /**
@@ -59,6 +60,10 @@ const DEFAULT_COPY = {
    * Error message when the user enters a password that fails validation.
    */
   error_validation_error: "Password does not meet requirements.",
+  /**
+   * Error message when Turnstile is missing or invalid.
+   */
+  error_turnstile: "Please complete the challenge.",
   /**
    * Title of the register page.
    */
@@ -141,7 +146,7 @@ type PasswordUICopy = typeof DEFAULT_COPY
  * Configure the password UI.
  */
 export interface PasswordUIOptions
-  extends Pick<PasswordConfig, "sendCode" | "validatePassword"> {
+  extends Pick<PasswordConfig, "sendCode" | "validatePassword" | "turnstile"> {
   /**
    * Custom copy for the UI.
    */
@@ -157,12 +162,15 @@ export function PasswordUI(input: PasswordUIOptions): PasswordConfig {
     ...DEFAULT_COPY,
     ...input.copy,
   }
+  const turnstile = input.turnstile?.siteKey ? input.turnstile : undefined
   return {
     validatePassword: input.validatePassword,
     sendCode: input.sendCode,
+    turnstile: input.turnstile,
     login: async (_req, form, error): Promise<Response> => {
       const jsx = (
         <Layout>
+          {turnstile && <TurnstileScript />}
           <form data-component="form" method="post">
             <FormAlert message={error?.type && copy?.[`error_${error.type}`]} />
             <input
@@ -183,6 +191,13 @@ export function PasswordUI(input: PasswordUIOptions): PasswordConfig {
               placeholder={copy.input_password}
               autoComplete="current-password"
             />
+            {turnstile && (
+              <TurnstileWidget
+                siteKey={turnstile.siteKey!}
+                action={turnstile.action}
+                widget={turnstile.widget}
+              />
+            )}
             <button data-component="button">{copy.button_continue}</button>
             <div data-component="form-footer">
               <span>
@@ -216,6 +231,7 @@ export function PasswordUI(input: PasswordUIOptions): PasswordConfig {
       ].includes(error?.type || "")
       const jsx = (
         <Layout>
+          {turnstile && <TurnstileScript />}
           <form data-component="form" method="post">
             <FormAlert
               message={
@@ -259,6 +275,13 @@ export function PasswordUI(input: PasswordUIOptions): PasswordConfig {
                   placeholder={copy.input_repeat}
                   autoComplete="new-password"
                 />
+                {turnstile && (
+                  <TurnstileWidget
+                    siteKey={turnstile.siteKey!}
+                    action={turnstile.action}
+                    widget={turnstile.widget}
+                  />
+                )}
                 <button data-component="button">{copy.button_continue}</button>
                 <div data-component="form-footer">
                   <span>
@@ -304,6 +327,7 @@ export function PasswordUI(input: PasswordUIOptions): PasswordConfig {
       ].includes(error?.type || "")
       const jsx = (
         <Layout>
+          {turnstile && <TurnstileScript />}
           <form data-component="form" method="post" replace>
             <FormAlert
               message={
@@ -326,6 +350,13 @@ export function PasswordUI(input: PasswordUIOptions): PasswordConfig {
                   value={form?.get("email")?.toString()}
                   placeholder={copy.input_email}
                 />
+                {turnstile && (
+                  <TurnstileWidget
+                    siteKey={turnstile.siteKey!}
+                    action={turnstile.action}
+                    widget={turnstile.widget}
+                  />
+                )}
               </>
             )}
             {state.type === "code" && (
@@ -377,6 +408,13 @@ export function PasswordUI(input: PasswordUIOptions): PasswordConfig {
             <form method="post">
               <input type="hidden" name="action" value="code" />
               <input type="hidden" name="email" value={state.email} />
+              {turnstile && (
+                <TurnstileWidget
+                  siteKey={turnstile.siteKey!}
+                  action={turnstile.action}
+                  widget={turnstile.widget}
+                />
+              )}
               {state.type === "code" && (
                 <div data-component="form-footer">
                   <span>
