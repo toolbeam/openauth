@@ -6,7 +6,7 @@ import {
   beforeEach,
   afterEach,
 } from "bun:test"
-import { object, string } from "valibot"
+import { object, string, array, optional } from "valibot"
 import { issuer } from "../src/issuer.js"
 import { createClient } from "../src/client.js"
 import { createSubjects } from "../src/subject.js"
@@ -16,6 +16,7 @@ import { Provider } from "../src/provider/provider.js"
 const subjects = createSubjects({
   user: object({
     userID: string(),
+    permissions: optional(array(string()))
   }),
 })
 
@@ -338,6 +339,106 @@ describe("refresh token", () => {
     expect(response.status).toBe(400)
     const reused = await response.json()
     expect(reused.error).toBe("invalid_request")
+  })
+
+  test("refresh callback updates properties", async () => {
+    let refreshCallCount = 0
+    const refreshedSubjects = createSubjects({
+      user: object({
+        userID: string(),
+        permissions: optional(array(string())),
+      }),
+    })
+    const issuerWithRefresh = issuer({
+      ...issuerConfig,
+      subjects: refreshedSubjects,
+      refresh: async (ctx, value) => {
+        refreshCallCount++
+        expect(value.type).toBe("user")
+        expect(value.properties).toStrictEqual({ userID: "123" })
+        expect(value.subject).toMatch(/^user:[a-f0-9]+$/)
+        expect(value.clientID).toBe("123")
+
+        return ctx.subject("user", {
+          userID: "123",
+          permissions: ["read", "write"],
+        })
+      },
+    })
+
+    const client = createClient({
+      issuer: "https://auth.example.com",
+      clientID: "123",
+      fetch: (a, b) => Promise.resolve(issuerWithRefresh.request(a, b)),
+    })
+
+    // Generate initial tokens
+    const { challenge, url } = await client.authorize(
+      "https://client.example.com/callback",
+      "code",
+      { pkce: true },
+    )
+    let response = await issuerWithRefresh.request(url)
+    response = await issuerWithRefresh.request(response.headers.get("location")!, {
+      headers: {
+        cookie: response.headers.get("set-cookie")!,
+      },
+    })
+    const location = new URL(response.headers.get("location")!)
+    const code = location.searchParams.get("code")
+    const exchanged = await client.exchange(
+      code!,
+      "https://client.example.com/callback",
+      challenge.verifier,
+    )
+    if (exchanged.err) throw exchanged.err
+    const initialTokens = exchanged.tokens
+
+    // Verify initial token doesn't have permissions (just has userID)
+    const initialVerified = await client.verify(refreshedSubjects, initialTokens.access)
+    if (initialVerified.err) throw initialVerified.err
+    expect(initialVerified.subject.type).toBe("user")
+    expect(initialVerified.subject.properties.userID).toBe("123")
+    expect(initialVerified.subject.properties.permissions).toBeUndefined()
+    expect(refreshCallCount).toBe(0)
+
+    // Refresh the token
+    setSystemTime(Date.now() + 1000 * 60 + 1000)
+    response = await issuerWithRefresh.request("https://auth.example.com/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: initialTokens.refresh,
+      }).toString(),
+    })
+    expect(response.status).toBe(200)
+    const refreshed = await response.json()
+    expect(refreshCallCount).toBe(1)
+
+    // Verify refreshed token has updated properties including permissions
+    const refreshedVerified = await client.verify(
+      refreshedSubjects,
+      refreshed.access_token,
+    )
+    expect(refreshedVerified).toStrictEqual({
+      aud: "123",
+      subject: {
+        type: "user",
+        properties: {
+          userID: "123",
+          permissions: ["read", "write"],
+        },
+      },
+    })
+    if (refreshedVerified.err) throw refreshedVerified.err
+    // Explicitly verify permissions were added by the refresh callback
+    expect(refreshedVerified.subject.properties.permissions).toStrictEqual([
+      "read",
+      "write",
+    ])
   })
 })
 

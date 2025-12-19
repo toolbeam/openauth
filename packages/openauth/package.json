@@ -1,6 +1,7 @@
 {
   "name": "@openauthjs/openauth",
   "version": "0.4.3",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "build": "bun run script/build.ts",

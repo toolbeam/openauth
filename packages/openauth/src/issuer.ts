@@ -406,6 +406,38 @@ export interface IssuerInput<
     req: Request,
   ): Promise<Response>
   /**
+   * Optional callback that's called when a refresh token is used to get new access tokens.
+   *
+   * This allows you to update dynamic user attributes (permissions, roles, etc.) during
+   * token refresh without requiring the user to re-authenticate.
+   *
+   * If not provided, the original properties from the initial authentication will be reused.
+   *
+   * @example
+   * ```ts
+   * {
+   *   refresh: async (ctx, value) => {
+   *     // Fetch updated permissions from database
+   *     const permissions = await db.getPermissions(value.properties.userId)
+   *     return ctx.subject("user", {
+   *       ...value.properties,
+   *       permissions // Updated value
+   *     })
+   *   }
+   * }
+   * ```
+   */
+  refresh?(
+    response: OnSuccessResponder<SubjectPayload<Subjects>>,
+    input: {
+      type: string
+      properties: any
+      subject: string
+      clientID: string
+    },
+    req: Request,
+  ): Promise<Response>
+  /**
    * @internal
    */
   error?(error: UnknownStateError, req: Request): Promise<Response>
@@ -944,6 +976,44 @@ export function issuer<
             400,
           )
         }
+
+        // If refresh callback is provided, call it to allow updating properties
+        if (input.refresh) {
+          return input.refresh(
+            {
+              async subject(type, properties, opts) {
+                const tokens = await generateTokens(
+                  c,
+                  {
+                    type: type as string,
+                    subject: opts?.subject || payload.subject,
+                    properties,
+                    clientID: payload.clientID,
+                    ttl: {
+                      access: opts?.ttl?.access ?? ttlAccess,
+                      refresh: opts?.ttl?.refresh ?? ttlRefresh,
+                    },
+                  },
+                  { generateRefreshToken },
+                )
+                return c.json({
+                  access_token: tokens.access,
+                  refresh_token: tokens.refresh,
+                  expires_in: tokens.expiresIn,
+                })
+              },
+            },
+            {
+              type: payload.type,
+              properties: payload.properties,
+              subject: payload.subject,
+              clientID: payload.clientID,
+            },
+            c.req.raw,
+          )
+        }
+
+        // Fallback: use existing cached properties
         const tokens = await generateTokens(c, payload, {
           generateRefreshToken,
         })
