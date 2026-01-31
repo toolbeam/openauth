@@ -1,4 +1,4 @@
 export default {
-  github: "https://github.com/toolbeam/openauth",
+  github: "https://github.com/anomalyco/openauth",
   discord: "https://sst.dev/discord",
 }
