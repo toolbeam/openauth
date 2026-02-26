@@ -240,8 +240,10 @@ export async function login() {
     const verified = await client.verify(subjects, accessToken.value, {
       refresh: refreshToken?.value,
     })
-    if (!verified.err && verified.tokens) {
-      await setTokens(verified.tokens.access, verified.tokens.refresh)
+    if (!verified.err) {
+      if (verified.tokens) {
+        await setTokens(verified.tokens.access, verified.tokens.refresh)
+      }
       redirect("/")
     }
   }
