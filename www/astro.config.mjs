@@ -3,6 +3,7 @@ import starlight from "@astrojs/starlight"
 import { defineConfig } from "astro/config"
 import { rehypeHeadingIds } from "@astrojs/markdown-remark"
 import rehypeAutolinkHeadings from "rehype-autolink-headings"
+import { mermaid } from "./src/plugins/mermaid"
 import config from "./config"
 
 const url = "https://openauth.js.org"
@@ -59,6 +60,16 @@ export default defineConfig({
             content: `${url}/social-share.png`,
           },
         },
+        {
+          tag: "script",
+          attrs: {
+            type: "module",
+          },
+          content: `
+            import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+            mermaid.initialize({ startOnLoad: true, securityLevel: 'loose' });
+          `,
+        },
       ],
       logo: {
         light: "./src/assets/logo-light.svg",
@@ -92,6 +103,10 @@ export default defineConfig({
         {
           label: "Core",
           items: ["docs/client", "docs/issuer", "docs/subject"],
+        },
+        {
+          label: "Concepts",
+          items: ["docs/concepts/lazy-registration"],
         },
         {
           label: "Providers",
@@ -128,6 +143,7 @@ export default defineConfig({
     }),
   ],
   markdown: {
+    remarkPlugins: [mermaid],
     rehypePlugins: [
       rehypeHeadingIds,
       [rehypeAutolinkHeadings, { behavior: "wrap" }],

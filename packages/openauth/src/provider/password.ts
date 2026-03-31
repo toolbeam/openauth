@@ -273,6 +273,15 @@ export function PasswordProvider(
   }
   return {
     type: "password",
+    async finalize(input) {
+      if (input.data?.kind !== "password-register") return
+      const email = input.data.email?.toString()?.toLowerCase()
+      const password = input.data.password
+      if (!email || !password) return
+      const existing = await Storage.get(input.storage, ["email", email, "password"])
+      if (existing) return
+      await Storage.set(input.storage, ["email", email, "password"], password)
+    },
     init(routes, ctx) {
       routes.get("/authorize", async (c) =>
         ctx.forward(c, await config.login(c.req.raw)),
@@ -408,14 +417,19 @@ export function PasswordProvider(
           ])
           if (existing)
             return transition({ type: "start" }, { type: "email_taken" })
-          await Storage.set(
-            ctx.storage,
-            ["email", provider.email, "password"],
-            provider.password,
+          return ctx.success(
+            c,
+            {
+              email: provider.email,
+            },
+            {
+              commit: {
+                kind: "password-register",
+                email: provider.email,
+                password: provider.password,
+              },
+            },
           )
-          return ctx.success(c, {
-            email: provider.email,
-          })
         }
 
         return transition({ type: "start" })
