@@ -1,0 +1,44 @@
+.sl-markdown-content .mermaid {
+	margin: 1.25rem 0;
+	overflow-x: auto;
+}
+
+.sl-markdown-content .mermaid svg {
+	min-width: 820px;
+	height: auto;
+}
+
+.sl-markdown-content .mermaid text {
+	font-size: 15px;
+}
+
+/* Improve Mermaid readability in dark theme */
+:root[data-theme="dark"] .sl-markdown-content .mermaid text,
+:root[data-theme="dark"] .sl-markdown-content .mermaid tspan,
+:root[data-theme="dark"] .sl-markdown-content .mermaid .messageText,
+:root[data-theme="dark"] .sl-markdown-content .mermaid .labelText,
+:root[data-theme="dark"] .sl-markdown-content .mermaid .loopText,
+:root[data-theme="dark"] .sl-markdown-content .mermaid .actor,
+:root[data-theme="dark"] .sl-markdown-content .mermaid .noteText {
+	fill: #f8fafc !important;
+	color: #f8fafc !important;
+	stroke: none !important;
+}
+
+:root[data-theme="dark"] .sl-markdown-content .mermaid .messageLine0,
+:root[data-theme="dark"] .sl-markdown-content .mermaid .messageLine1,
+:root[data-theme="dark"] .sl-markdown-content .mermaid .actor-line,
+:root[data-theme="dark"] .sl-markdown-content .mermaid .loopLine,
+:root[data-theme="dark"] .sl-markdown-content .mermaid .innerArc,
+:root[data-theme="dark"] .sl-markdown-content .mermaid .marker,
+:root[data-theme="dark"] .sl-markdown-content .mermaid #arrowhead path {
+	stroke: #cbd5e1 !important;
+	fill: #cbd5e1 !important;
+}
+
+:root[data-theme="dark"] .sl-markdown-content .mermaid .actor,
+:root[data-theme="dark"] .sl-markdown-content .mermaid .labelBox,
+:root[data-theme="dark"] .sl-markdown-content .mermaid g rect.rect {
+	fill: #111827 !important;
+	stroke: #94a3b8 !important;
+}

@@ -50,7 +50,7 @@ const issuerConfig = {
       },
     } satisfies Provider<{ email: string }>,
   },
-  success: async (ctx, value) => {
+  success: async (ctx: any, value: any) => {
     if (value.provider === "dummy") {
       return ctx.subject("user", {
         userID: "123",
@@ -116,6 +116,281 @@ describe("code flow", () => {
         userID: "123",
       },
     })
+  })
+})
+
+describe("lazy registration", () => {
+  test("commits only on token exchange", async () => {
+    const lazyStorage = MemoryStorage()
+    const lazyIssuer = issuer({
+      ...issuerConfig,
+      storage: lazyStorage,
+      persistence: {
+        registration: "lazy",
+      },
+      providers: {
+        lazy: {
+          type: "lazy",
+          async finalize(input) {
+            if (input.data?.kind !== "user-create") return
+            const existing = await input.storage.get(["user", input.data.id])
+            if (existing) return
+            await input.storage.set(["user", input.data.id], {
+              created: true,
+            })
+          },
+          init(route, ctx) {
+            route.get("/authorize", async (c) => {
+              return ctx.success(
+                c,
+                {
+                  email: "foo@bar.com",
+                },
+                {
+                  commit: {
+                    kind: "user-create",
+                    id: "abc",
+                  },
+                },
+              )
+            })
+          },
+        } satisfies Provider<{ email: string }>,
+      },
+      success: async (ctx, value) => {
+        if (value.provider === "lazy") {
+          return ctx.subject("user", {
+            userID: "abc",
+          })
+        }
+        throw new Error("Invalid provider: " + value.provider)
+      },
+    })
+
+    const client = createClient({
+      issuer: "https://auth.example.com",
+      clientID: "123",
+      fetch: (a, b) => Promise.resolve(lazyIssuer.request(a, b)),
+    })
+
+    const { challenge, url } = await client.authorize(
+      "https://client.example.com/callback",
+      "code",
+      {
+        provider: "lazy",
+        pkce: true,
+      },
+    )
+
+    let response = await lazyIssuer.request(url)
+    response = await lazyIssuer.request(response.headers.get("location")!, {
+      headers: {
+        cookie: response.headers.get("set-cookie")!,
+      },
+    })
+
+    const location = new URL(response.headers.get("location")!)
+    const code = location.searchParams.get("code")
+    expect(code).not.toBeNull()
+
+    expect(await lazyStorage.get(["user", "abc"])).toBeUndefined()
+
+    const exchanged = await client.exchange(
+      code!,
+      "https://client.example.com/callback",
+      challenge.verifier,
+    )
+    if (exchanged.err) throw exchanged.err
+
+    expect(await lazyStorage.get(["user", "abc"])).toEqual({
+      created: true,
+    })
+  })
+
+  test("returns server_error when finalize fails", async () => {
+    const lazyIssuer = issuer({
+      ...issuerConfig,
+      storage: MemoryStorage(),
+      persistence: {
+        registration: "lazy",
+      },
+      providers: {
+        lazy: {
+          type: "lazy",
+          async finalize() {
+            throw new Error("db unavailable")
+          },
+          init(route, ctx) {
+            route.get("/authorize", async (c) => {
+              return ctx.success(
+                c,
+                {
+                  email: "foo@bar.com",
+                },
+                {
+                  commit: {
+                    kind: "user-create",
+                    id: "abc",
+                  },
+                },
+              )
+            })
+          },
+        } satisfies Provider<{ email: string }>,
+      },
+      success: async (ctx, value) => {
+        if (value.provider === "lazy") {
+          return ctx.subject("user", {
+            userID: "abc",
+          })
+        }
+        throw new Error("Invalid provider: " + value.provider)
+      },
+    })
+
+    const client = createClient({
+      issuer: "https://auth.example.com",
+      clientID: "123",
+      fetch: (a, b) => Promise.resolve(lazyIssuer.request(a, b)),
+    })
+
+    const { url } = await client.authorize(
+      "https://client.example.com/callback",
+      "code",
+      {
+        provider: "lazy",
+      },
+    )
+
+    let response = await lazyIssuer.request(url)
+    response = await lazyIssuer.request(response.headers.get("location")!, {
+      headers: {
+        cookie: response.headers.get("set-cookie")!,
+      },
+    })
+
+    const location = new URL(response.headers.get("location")!)
+    const code = location.searchParams.get("code")!
+
+    response = await lazyIssuer.request("https://auth.example.com/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        client_id: "123",
+        redirect_uri: "https://client.example.com/callback",
+      }).toString(),
+    })
+
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({
+      error: "server_error",
+      error_description: "Failed to commit registration",
+    })
+  })
+
+  test("retry succeeds after transient finalize failure", async () => {
+    const lazyStorage = MemoryStorage()
+    let attempts = 0
+    const lazyIssuer = issuer({
+      ...issuerConfig,
+      storage: lazyStorage,
+      persistence: {
+        registration: "lazy",
+      },
+      providers: {
+        lazy: {
+          type: "lazy",
+          async finalize(input) {
+            attempts += 1
+            if (attempts === 1) {
+              throw new Error("temporary outage")
+            }
+            const existing = await input.storage.get(["user", "abc"])
+            if (existing) return
+            await input.storage.set(["user", "abc"], { created: true })
+          },
+          init(route, ctx) {
+            route.get("/authorize", async (c) => {
+              return ctx.success(
+                c,
+                {
+                  email: "foo@bar.com",
+                },
+                {
+                  commit: {
+                    kind: "user-create",
+                    id: "abc",
+                  },
+                },
+              )
+            })
+          },
+        } satisfies Provider<{ email: string }>,
+      },
+      success: async (ctx, value) => {
+        if (value.provider === "lazy") {
+          return ctx.subject("user", {
+            userID: "abc",
+          })
+        }
+        throw new Error("Invalid provider: " + value.provider)
+      },
+    })
+
+    const client = createClient({
+      issuer: "https://auth.example.com",
+      clientID: "123",
+      fetch: (a, b) => Promise.resolve(lazyIssuer.request(a, b)),
+    })
+
+    const { url } = await client.authorize(
+      "https://client.example.com/callback",
+      "code",
+      {
+        provider: "lazy",
+      },
+    )
+
+    let response = await lazyIssuer.request(url)
+    response = await lazyIssuer.request(response.headers.get("location")!, {
+      headers: {
+        cookie: response.headers.get("set-cookie")!,
+      },
+    })
+
+    const location = new URL(response.headers.get("location")!)
+    const code = location.searchParams.get("code")!
+
+    const tokenRequest = () =>
+      lazyIssuer.request("https://auth.example.com/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code,
+          client_id: "123",
+          redirect_uri: "https://client.example.com/callback",
+        }).toString(),
+      })
+
+    response = await tokenRequest()
+    expect(response.status).toBe(500)
+
+    response = await tokenRequest()
+    expect(response.status).toBe(200)
+    const json = await response.json()
+    expect(json.access_token).toEqual(expectNonEmptyString)
+    expect(json.refresh_token).toEqual(expectNonEmptyString)
+    expect(await lazyStorage.get(["user", "abc"])).toEqual({
+      created: true,
+    })
+    expect(attempts).toBe(2)
   })
 })
 

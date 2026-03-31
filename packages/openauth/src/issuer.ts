@@ -350,6 +350,24 @@ export interface IssuerInput<
     retention?: number
   }
   /**
+   * Control when provider-side persistence should be committed.
+   *
+   * - `immediate`: commit during provider success callback.
+   * - `lazy`: defer commit until authorization code is exchanged.
+    *
+    * In `lazy` mode, providers should pass commit payload using
+    * `ctx.success(..., { commit })` and implement `provider.finalize()`.
+    *
+    * This only affects provider-side persistence timing, not token lifetime.
+    *
+    * Docs: /docs/concepts/lazy-registration
+   *
+   * @default "immediate"
+   */
+  persistence?: {
+    registration?: "immediate" | "lazy"
+  }
+  /**
    * Optionally, configure the UI that's displayed when the user visits the root URL of the
    * of the OpenAuth server.
    *
@@ -466,6 +484,8 @@ export function issuer<
   const ttlRefresh = input.ttl?.refresh ?? 60 * 60 * 24 * 365
   const ttlRefreshReuse = input.ttl?.reuse ?? 60
   const ttlRefreshRetention = input.ttl?.retention ?? 0
+  const registrationPersistence =
+    input.persistence?.registration ?? "immediate"
   if (input.theme) {
     setTheme(input.theme)
   }
@@ -517,13 +537,32 @@ export function issuer<
         {
           async subject(type, properties, subjectOpts) {
             const authorization = await getAuthorization(ctx)
+            const providerName = ctx.get("provider") as string
+            const provider = input.providers[providerName]
             const subject = subjectOpts?.subject
               ? subjectOpts.subject
               : await resolveSubject(type, properties)
             await successOpts?.invalidate?.(
               await resolveSubject(type, properties),
             )
+            const commit = successOpts?.commit
+            async function commitProvider() {
+              if (!commit) return
+              if (!provider?.finalize) {
+                throw new Error(
+                  `Provider ${providerName} does not support lazy registration`,
+                )
+              }
+              await provider.finalize({
+                storage: storage!,
+                subject,
+                type: type as string,
+                properties,
+                data: commit,
+              })
+            }
             if (authorization.response_type === "token") {
+              await commitProvider()
               const location = new URL(authorization.redirect_uri)
               const tokens = await generateTokens(ctx, {
                 subject,
@@ -545,10 +584,14 @@ export function issuer<
             }
             if (authorization.response_type === "code") {
               const code = crypto.randomUUID()
+              if (registrationPersistence === "immediate") {
+                await commitProvider()
+              }
               await Storage.set(
                 storage,
                 ["oauth:code", code],
                 {
+                  provider: providerName,
                   type,
                   properties,
                   subject,
@@ -559,6 +602,10 @@ export function issuer<
                     access: subjectOpts?.ttl?.access ?? ttlAccess,
                     refresh: subjectOpts?.ttl?.refresh ?? ttlRefresh,
                   },
+                  commit:
+                    registrationPersistence === "lazy"
+                      ? commit
+                      : undefined,
                 },
                 60,
               )
@@ -810,6 +857,7 @@ export function issuer<
           )
         const key = ["oauth:code", code.toString()]
         const payload = await Storage.get<{
+          provider?: string
           type: string
           properties: any
           clientID: string
@@ -820,6 +868,7 @@ export function issuer<
             refresh: number
           }
           pkce?: AuthorizationState["pkce"]
+          commit?: any
         }>(storage, key)
         if (!payload) {
           return c.json(
@@ -874,6 +923,38 @@ export function issuer<
                 error_description: "Code verifier does not match",
               },
               400,
+            )
+          }
+        }
+        if (payload.commit !== undefined) {
+          const provider = payload.provider
+            ? input.providers[payload.provider]
+            : undefined
+          if (!provider?.finalize) {
+            return c.json(
+              {
+                error: "server_error",
+                error_description:
+                  "Provider does not support lazy registration",
+              },
+              500,
+            )
+          }
+          try {
+            await provider.finalize({
+              storage,
+              subject: payload.subject,
+              type: payload.type,
+              properties: payload.properties,
+              data: payload.commit,
+            })
+          } catch {
+            return c.json(
+              {
+                error: "server_error",
+                error_description: "Failed to commit registration",
+              },
+              500,
             )
           }
         }
