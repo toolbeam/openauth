@@ -7,7 +7,7 @@
  *
  * export default issuer({
  *   providers: {
- *     code: CodeAdapter(
+ *     code: CodeProvider(
  *       CodeUI({
  *         copy: {
  *           code_info: "We'll send a pin code to your email"
