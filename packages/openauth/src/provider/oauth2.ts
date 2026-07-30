@@ -184,7 +184,6 @@ export function Oauth2Provider(
     let idTokenPayload: Record<string, any> | null = null
     if (config.endpoint.jwks) {
       const jwksEndpoint = new URL(config.endpoint.jwks)
-      // @ts-expect-error bun/node mismatch
       const jwks = createRemoteJWKSet(jwksEndpoint)
       const { payload } = await jwtVerify(json.id_token, jwks, {
         audience: config.clientID,
