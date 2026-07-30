@@ -1,3 +1,41 @@
+/**
+ * Configure a fully customizable UI for the Password provider using a modern frontend framework (e.g., React) via Vite.
+ *
+ * ```ts {1,7-24}
+ * import { CustomPasswordUI } from "@openauthjs/vite" // Adjust import path if necessary
+ * import { PasswordProvider } from "@openauthjs/openauth/provider/password"
+ *
+ * export default issuer({
+ *   providers: {
+ *     password: PasswordProvider(
+ *       CustomPasswordUI({
+ *         sendCode: async (email, code) => {
+ *           console.log(email, code);
+ *         },
+ *         loader: {
+ *           login: async () => {
+ *             const dbData = await getDataFromDb();
+ *
+ *             return {
+ *               data: dbData,
+ *               responseInit: {
+ *                 headers: {
+ *                   "x-custom-header": "hello",
+ *                 },
+ *               },
+ *             };
+ *           },
+ *         }
+ *       })
+ *     )
+ *   },
+ *   // ...
+ * })
+ * ```
+ *
+ * @packageDocumentation
+ */
+
 import type { MatcherOptions, SSRRenderer } from "@openauthjs/core/custom-ui"
 import type {
   PasswordConfig,
@@ -25,12 +63,19 @@ export interface PasswordLoaderResult {
   data: Record<string, unknown>
   responseInit?: ResponseInit
 }
-
+/**
+ * Configure the custom password UI.
+ */
 export interface CustomPasswordUIOptions
   extends Pick<
     PasswordConfig,
     "sendCode" | "validatePassword" | "length" | "hasher"
   > {
+  /**
+   * Optional server-side data loaders for your custom pages.
+   * Allows you to fetch data during SSR and pass it to your UI components,
+   * or customize the server response (e.g., adding headers).
+   */
   loader?: {
     [K in "register" | "login" | "change"]: (
       ...args: Parameters<PasswordConfig[K]>
@@ -49,7 +94,7 @@ function validateRoutes() {
   const missingPaths = missingRoutes.map((route) => `src/pages/${route}.ext`)
 
   if (missingRoutes.length > 0) {
-    const fileString = missingPaths.length === 1 ? 'file is' : "files are"
+    const fileString = missingPaths.length === 1 ? "file is" : "files are"
 
     throw new Error(`${missingPaths.join(", ")} ${fileString} missing`)
   }
@@ -133,7 +178,10 @@ async function renderRouteComponent(
 const DEFAULT_LOADER_RESULT = {
   data: {},
 }
-
+/**
+ * Creates a custom Vite-powered UI for the Password provider flow.
+ * @param input - Configure the custom UI and SSR data loaders.
+ */
 export function CustomPasswordUI(
   input: CustomPasswordUIOptions,
 ): PasswordConfig {
