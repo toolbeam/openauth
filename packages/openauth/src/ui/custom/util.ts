@@ -9,7 +9,6 @@ export function mergePageStream(
       const encoder = new TextEncoder()
 
       try {
-        // We just split the string directly now
         const [shellStart, shellEnd] = shellHtml.split(STREAM_PLACEHOLDER)
 
         if (shellStart === undefined || shellEnd === undefined) {
