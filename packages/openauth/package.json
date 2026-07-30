@@ -9,6 +9,8 @@
   "sideEffects": false,
   "devDependencies": {
     "@cloudflare/workers-types": "4.20241205.0",
+    "@openauthjs/core": "workspace:*",
+    "@openauthjs/vite": "workspace:*",
     "@tsconfig/node22": "22.0.0",
     "@types/node": "22.10.1",
     "arctic": "2.2.2",
@@ -32,12 +34,19 @@
   },
   "peerDependencies": {
     "arctic": "^2.2.2",
-    "hono": "^4.0.0"
+    "hono": "^4.0.0",
+    "@openauthjs/vite": "workspace:*"
   },
   "dependencies": {
+    "@openauthjs/core": "workspace:*",
     "@standard-schema/spec": "1.0.0-beta.3",
     "aws4fetch": "1.0.20",
     "jose": "5.9.6"
+  },
+  "peerDependenciesMeta": {
+    "@openauthjs/vite": {
+      "optional": true
+    }
   },
   "files": [
     "src",

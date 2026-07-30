@@ -3,14 +3,14 @@
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "dist",
-    "lib": ["ESNext"],
     "declaration": true,
     "skipLibCheck": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "types": ["node"]
   },
-  "include": ["src", "../vite/virtual.d.ts"]
+  "include": ["src", "virtual.d.ts"]
 }

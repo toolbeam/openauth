@@ -1,16 +1,13 @@
 {
   "extends": "@tsconfig/node22/tsconfig.json",
   "compilerOptions": {
-    "rootDir": "./src",
+    "rootDir": "src",
     "outDir": "dist",
-    "lib": ["ESNext"],
     "declaration": true,
     "skipLibCheck": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "jsx": "react-jsx",
-    "jsxImportSource": "hono/jsx",
     "types": ["node"]
   },
-  "include": ["src", "../vite/virtual.d.ts"]
+  "include": ["src"]
 }

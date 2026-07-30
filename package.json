@@ -3,12 +3,15 @@
   "module": "index.ts",
   "type": "module",
   "workspaces": [
-    "packages/openauth",
-    "examples/issuer/*",
+    "packages/*",
     "examples/client/*"
   ],
   "scripts": {
-    "release": "bun run --filter=\"@openauthjs/openauth\" build && changeset publish"
+    "build:core": "bun run --filter @openauthjs/core build",
+    "build:vite": "bun run --filter @openauthjs/vite build",
+    "build:react": "bun run --filter @openauthjs/react build",
+    "build:openauth": "bun run --filter @openauthjs/openauth build",
+    "release": "bun run build:core && bun run build:vite && bun run build:react && bun run build:openauth && changeset publish"
   },
   "devDependencies": {
     "@tsconfig/node22": "22.0.0",
