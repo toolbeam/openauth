@@ -1,0 +1,56 @@
+{
+  "name": "@openauthjs/vite",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "NODE_ENV=production bun run script/build.ts"
+  },
+  "bin": {
+    "openauth": "./cli.js"
+  },
+  "sideEffects": false,
+  "devDependencies": {
+    "@tsconfig/node22": "22.0.0",
+    "@types/node": "22.10.1",
+    "hono": "4.6.9",
+    "typescript": "5.6.3",
+    "vite": "^8.1.5",
+    "@hono/node-server": "^2.0.12"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js"
+    },
+    "./head": {
+      "types": "./dist/types/head.d.ts",
+      "import": "./dist/esm/head.js"
+    },
+    "./head.js": {
+      "types": "./dist/types/head.d.ts",
+      "import": "./dist/esm/head.js"
+    },
+    "./*.js": {
+      "types": "./dist/types/*.d.ts",
+      "import": "./dist/esm/*.js"
+    },
+    "./*": {
+      "types": "./dist/types/*.d.ts",
+      "import": "./dist/esm/*.js"
+    },
+    "./globals": {
+      "types": "./src/globals.ts",
+      "import": "./src/globals.ts"
+    }
+  },
+  "peerDependencies": {
+    "hono": "^4.0.0"
+  },
+  "dependencies": {
+    "@openauthjs/core": "workspace:*"
+  },
+  "files": [
+    "src",
+    "dist"
+  ]
+}

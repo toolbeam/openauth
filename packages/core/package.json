@@ -1,0 +1,62 @@
+{
+  "name": "@openauthjs/core",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "bun run script/build.ts"
+  },
+  "sideEffects": false,
+  "devDependencies": {
+    "@tsconfig/node22": "22.0.0",
+    "@types/node": "22.10.1",
+    "hono": "4.6.9",
+    "typescript": "5.6.3",
+    "vite": "^8.1.5"
+  },
+  "exports": {
+    "./custom-ui": {
+      "types": "./dist/types/custom-ui/index.d.ts",
+      "import": "./dist/esm/custom-ui/index.js"
+    },
+    "./custom-ui/*.js": {
+      "types": "./dist/types/custom-ui/*.d.ts",
+      "import": "./dist/esm/custom-ui/*.js"
+    },
+      "./custom-ui/util.js": {
+      "types": "./dist/types/custom-ui/util/index.d.ts",
+      "import": "./dist/esm/custom-ui/util/index.js"
+    },
+    "./custom-ui/util/shared.js": {
+      "types": "./dist/types/custom-ui/util/shared.d.ts",
+      "import": "./dist/esm/custom-ui/util/shared.js"
+    },
+    "./custom-ui/*": {
+      "types": "./dist/types/custom-ui/*.d.ts",
+      "import": "./dist/esm/custom-ui/*.js"
+    },
+    "./*.js": {
+      "types": "./dist/types/*.d.ts",
+      "import": "./dist/esm/*.js"
+    },
+    "./*": {
+      "types": "./dist/types/*.d.ts",
+      "import": "./dist/esm/*.js"
+    }
+  },
+  "peerDependencies": {
+    "hono": "^4.0.0",
+    "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "hono": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    }
+  },
+  "files": [
+    "src",
+    "dist"
+  ]
+}
