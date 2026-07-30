@@ -21,7 +21,21 @@ declare const awslambda: any
 export interface OpenAuthUserConfig extends UserConfig {
   integrations?: OpenAuthIntegration[]
 }
-
+/**
+ * Configure the OpenAuth Vite dev server and build process.
+ * 
+ * @example
+ * ```ts title="openauth.config.ts"
+ * import { defineConfig } from "@openauthjs/vite";
+ * import { react } from "@openauthjs/react";
+ * import tailwindcss from "@tailwindcss/vite";
+ *
+ * export default defineConfig({
+ *   integrations: [react()],
+ *   plugins: [tailwindcss()],
+ * });
+ * ```
+ */
 export const defineConfig = (rawConfig?: OpenAuthUserConfig) => {
   const userConfig = rawConfig ?? {}
   const integrations = userConfig.integrations ?? []
