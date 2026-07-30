@@ -2,15 +2,23 @@ import { OPENAUTH_CONTEXT_DATA_ID } from "@openauthjs/core/custom-ui/util/shared
 import type { Context } from "@openauthjs/core/custom-ui/types.js"
 import { pages } from "virtual:openauth/custom-ui/components"
 import type { ComponentType } from "react"
-import React from "react";
+import React from "react"
 import { AuthContext } from "./context.js"
 import { hydrateRoot } from "react-dom/client"
 
-interface HydrateOptions {
-  root?: Element | Document
-}
-
-export function hydrate(options?: HydrateOptions) {
+/**
+ * Hydrates the server-rendered OpenAuth custom UI in the browser.
+ * This should be called in your client entrypoint file.
+ *
+ * @example
+ * ```tsx title="src/main.tsx"
+ * import { hydrate } from "@openauthjs/react"
+ *
+ * hydrate()
+ * ```
+ *
+ */
+export function hydrate() {
   const contextDataScript = document.getElementById(
     OPENAUTH_CONTEXT_DATA_ID,
   ) as HTMLScriptElement
@@ -27,8 +35,7 @@ export function hydrate(options?: HydrateOptions) {
     )
   }
 
-  const root =
-    options?.root ?? document.getElementsByTagName("openauth-react-root")[0]
+  const root = document.getElementsByTagName("openauth-react-root")[0]
 
   if (!root) {
     throw new Error(
